@@ -1,13 +1,13 @@
 # ChickenTest
 Mi primer proyecto web en Java.
 
-### Instrucciones
+### Instrucciones 📋
 Ejecutar el archivo sql script para cargar la base de datos con información, y luego ingresar al sistema con el usuario: admin/contraseña: admin.
 
-### Construcción
+### Construcción 🔧
 Se realizó el programa con Java EE Servlets y Eclipse IDE. Las páginas se realizaron con JSP y Bootstrap.
 
-### Requerimientos
+### Requerimientos 🚀
 Obligatorios:
 
 -Una granja puede tener un número limitado de huevos y gallinas. Se definió en el método calculoStock() el límite de 2000 huevos y 1500 gallinas.
