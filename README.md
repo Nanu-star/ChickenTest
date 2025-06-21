@@ -32,3 +32,22 @@ Opcionales:
 -Las gallinas fallecen pasados [] días. 
 
 -Las gallinas ponen [] huevos cada [] días. 
+
+## Microservices Architecture
+
+This repository now includes a minimal setup for a Node.js-based microservice architecture.
+The `services/` folder contains individual services:
+
+- `gateway-service`
+- `user-service`
+- `inventory-service`
+- `transaction-service`
+- `reporting-service`
+
+Each service exposes a simple HTTP endpoint and can be started together using Docker Compose:
+
+```bash
+docker-compose up --build
+```
+
+This will launch all services on ports 3000-3004 respectively.

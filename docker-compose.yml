@@ -1,0 +1,22 @@
+version: '3'
+services:
+  gateway-service:
+    build: ./services/gateway-service
+    ports:
+      - "3000:3000"
+  user-service:
+    build: ./services/user-service
+    ports:
+      - "3001:3001"
+  inventory-service:
+    build: ./services/inventory-service
+    ports:
+      - "3002:3002"
+  transaction-service:
+    build: ./services/transaction-service
+    ports:
+      - "3003:3003"
+  reporting-service:
+    build: ./services/reporting-service
+    ports:
+      - "3004:3004"
