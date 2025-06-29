@@ -173,6 +173,42 @@ public class FarmService {
         return article;
     }
 
+
+    @Transactional
+    public void hatchEggs() {
+        List<Article> eggs = articleRepository.findByCategory(eggsCategory);
+        for (Article egg : eggs) {
+            egg.setAge(egg.getAge() + 1);
+            if (egg.getAge() >= Constants.EGG_HATCH_DAYS && egg.getUnits() > 0) {
+                int unitsToHatch = egg.getUnits();
+                Article chicken = articleRepository.findByNameAndCategory(egg.getName(), chickensCategory)
+                        .orElseGet(() -> {
+                            Article a = new Article();
+                            a.setName(egg.getName());
+                            a.setPrice(egg.getPrice());
+                            a.setCategory(chickensCategory);
+                            a.setUnits(0);
+                            a.setAge(0);
+                            a.setProduction(egg.getProduction());
+                            a.setCreation(new java.util.Date());
+                            return a;
+                        });
+
+                if (checkStockLimit(chicken, unitsToHatch)) {
+                    chicken.setUnits(chicken.getUnits() + unitsToHatch);
+                    articleRepository.save(chicken);
+                    Movement movement = Movement.createMovement(chicken, new java.util.Date(),
+                            MovementType.PRODUCTION, unitsToHatch,
+                            chicken.getPrice() * unitsToHatch, "scheduler");
+                    movementRepository.save(movement);
+                    egg.setUnits(0);
+                    egg.setAge(0);
+                }
+            }
+            articleRepository.save(egg);
+        }
+    }
+
     private void performTransaction(Article article, int quantity, double amount, MovementType type, User user) {
         int updatedUnits = type == MovementType.PURCHASE ? article.getUnits() + quantity : article.getUnits() - quantity;
         article.setUnits(updatedUnits);
