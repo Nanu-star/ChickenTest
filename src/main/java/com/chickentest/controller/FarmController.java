@@ -247,10 +247,12 @@ public class FarmController {
 
     @GetMapping("/report")
     @PreAuthorize("isAuthenticated()")
-    public String report(Model model) {
+    public String report(@AuthenticationPrincipal User user, Model model) {
         try {
             Report report = farmService.generateReport();
+            List<Movement> movements = farmService.getMovements(user);
             model.addAttribute("report", report);
+            model.addAttribute("movements", movements);
             return "movimientos-reporte";
         } catch (FarmException e) {
             model.addAttribute("error", e.getMessage());

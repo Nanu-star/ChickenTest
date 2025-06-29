@@ -18,11 +18,11 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr th:each="movimiento : ${report.movimientos}">
-                                    <td th:text="${movimiento.tipo}"></td>
-                                    <td th:text="${movimiento.articulo.nombre}"></td>
-                                    <td th:text="${movimiento.cantidad}"></td>
-                                    <td th:text="${#temporals.format(movimiento.fecha, 'dd/MM/yyyy HH:mm')}"></td>
+                                <tr th:each="movement : ${movements}">
+                                    <td th:text="${movement.type}"></td>
+                                    <td th:text="${movement.article.name}"></td>
+                                    <td th:text="${movement.units}"></td>
+                                    <td th:text="${#temporals.format(movement.date, 'dd/MM/yyyy HH:mm')}"></td>
                                 </tr>
                             </tbody>
                         </table>
