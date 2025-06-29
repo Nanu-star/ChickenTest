@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import java.util.List;
 
 @Repository
 public interface MovementRepository extends JpaRepository<Movement, Long> {
@@ -13,6 +14,8 @@ public interface MovementRepository extends JpaRepository<Movement, Long> {
     @Query("SELECT COUNT(*) FROM Movement m WHERE m.type = :type")
     Long countProducedBatches(@Param("type") MovementType type);
 
-    @Query("SELECT SUM(m.amount * m.price) FROM Movement m WHERE m.type = :type")
+    @Query("SELECT SUM(a.price * m.amount) FROM Movement m JOIN m.article a WHERE m.type = :type")
     Double calculateTotalSales(@Param("type") MovementType type);
+
+    List<Movement> findByUsername(String username);
 }

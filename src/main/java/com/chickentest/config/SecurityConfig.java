@@ -40,17 +40,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/register", "/login", "/css/**", "/js/**").permitAll()
+            .authorizeRequests()
+                .antMatchers("/auth/register", "/auth/login", "/css/**", "/js/**").permitAll()
                 .anyRequest().authenticated()
-            )
-            .formLogin(form -> form
-                .loginPage("/login").permitAll()
+            .and()
+            .formLogin()
+                .loginPage("/auth/login").permitAll()
                 .defaultSuccessUrl("/dashboard", true)
-            )
-            .logout(logout -> logout
-                .logoutSuccessUrl("/login?logout").permitAll()
-            );
+            .and()
+            .logout()
+                .logoutSuccessUrl("/auth/login?logout").permitAll();
         return http.build();
     }
 }

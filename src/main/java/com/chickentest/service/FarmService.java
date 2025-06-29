@@ -1,5 +1,6 @@
 package com.chickentest.service;
 
+import com.chickentest.config.Constants;
 import com.chickentest.domain.Article;
 import com.chickentest.domain.Category;
 import com.chickentest.domain.Movement;
@@ -8,29 +9,35 @@ import com.chickentest.domain.Report;
 import com.chickentest.domain.User;
 import com.chickentest.exception.FarmException;
 import com.chickentest.repository.ArticleRepository;
+import com.chickentest.repository.CategoryRepository;
 import com.chickentest.repository.MovementRepository;
 import com.chickentest.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.time.LocalDate;
 
 @Service
 public class FarmService {
 
     private final ArticleRepository articleRepository;
     private final MovementRepository movementRepository;
+    private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
 
     @Autowired
-    public FarmService(ArticleRepository articleRepository, MovementRepository movementRepository, UserRepository userRepository) {
+    public FarmService(ArticleRepository articleRepository, MovementRepository movementRepository, CategoryRepository categoryRepository, UserRepository userRepository) {
         this.articleRepository = articleRepository;
         this.movementRepository = movementRepository;
+        this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<Article> loadInventory(User user) {
         List<Article> articles = articleRepository.findAll();
         boolean diario = false;
@@ -41,13 +48,19 @@ public class FarmService {
             }
         }
         
-        int chickens = articleRepository.findTotalUnitsByCategory(Category.CHICKEN);
+        Category chickensCategory = categoryRepository.findByDisplayName(Constants.Category.CHICKENS);
+        int chickens = articleRepository.findTotalUnitsByCategory(chickensCategory);
         if (!diario && chickens != 0) {
             Article dailyBatch = generateDailyBatch(chickens);
             articles.add(dailyBatch);
         }
         
         return articles;
+    }
+    
+    @Transactional(readOnly = true)
+    public List<Movement> getMovements(User user) {
+        return movementRepository.findByUsername(user.getUsername());
     }
 
     @Transactional
@@ -143,21 +156,21 @@ public class FarmService {
     public Report generateReport() {
         Report report = Report.builder()
             .date(LocalDate.now().toString())
-            .totalEggs(articleRepository.findTotalUnitsByCategory(Category.EGG))
-            .totalChickens(articleRepository.findTotalUnitsByCategory(Category.CHICKEN))
+            .totalEggs(articleRepository.findTotalUnitsByCategory(categoryRepository.findByDisplayName("Eggs")))
+            .totalChickens(articleRepository.findTotalUnitsByCategory(categoryRepository.findByDisplayName("Chickens")))
             .producedBatches(movementRepository.countProducedBatches(MovementType.PRODUCTION).intValue())
             .totalSales(movementRepository.calculateTotalSales(MovementType.SALE))
             .build();
         return report;
     }
     private boolean checkStockLimit(Article article, int cantidad) throws Exception {
-        int chickens = articleRepository.findTotalUnitsByCategory(Category.CHICKEN);
-        int eggs = articleRepository.findTotalUnitsByCategory(Category.EGG);
+        int chickens = articleRepository.findTotalUnitsByCategory(categoryRepository.findByDisplayName("Chickens"));
+        int eggs = articleRepository.findTotalUnitsByCategory(categoryRepository.findByDisplayName("Eggs"));
 
-        if (article.getCategory().equals(Category.EGG) && article.getUnits() + eggs > 2000) {
+        if (article.getCategory().equals(categoryRepository.findByDisplayName("Eggs")) && article.getUnits() + eggs > 2000) {
             return false;
         }
-        if (article.getCategory().equals(Category.CHICKEN) && article.getUnits() + chickens > 1500) {
+        if (article.getCategory().equals(categoryRepository.findByDisplayName("Chickens")) && article.getUnits() + chickens > 1500) {
             return false;
         }
         return true;
@@ -166,11 +179,16 @@ public class FarmService {
     private Article generateDailyBatch(int CHICKEN) {
         int huevos = CHICKEN * 3;
         Article article = new Article();
-        article.setCategory(Category.EGG);
+        article.setCategory(categoryRepository.findByDisplayName("Eggs"));
         article.setUnits(huevos);
         article.setProduction("chickentest");
         article.setPrice(1.5);
         article.setAge(0);
         return article;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Category> getCategories() {
+        return categoryRepository.findAll();
     }
 }

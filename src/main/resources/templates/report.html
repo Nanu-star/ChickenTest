@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{base :: layout(~{:: #content}, 'Report')}">
+<body>
+    <div id="content">
+        <h2>Reporte</h2>
+        
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="info-box">
+                            <span class="info-box-icon bg-info">
+                                <i class="fas fa-egg"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Huevos Totales</span>
+                                <span class="info-box-number" th:text="${report.totalEggs}"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-box">
+                            <span class="info-box-icon bg-success">
+                                <i class="fas fa-chicken"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Gallinas Totales</span>
+                                <span class="info-box-number" th:text="${report.totalChickens}"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-box">
+                            <span class="info-box-icon bg-primary">
+                                <i class="fas fa-box"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Lotes Producidos</span>
+                                <span class="info-box-number" th:text="${report.producedBatches}"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Ventas Totales</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-center h2" th:text="${report.totalSales}"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

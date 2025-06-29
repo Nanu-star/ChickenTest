@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Granja System</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+    <link type="text/css" rel="stylesheet" th:href="@{/css/estilos.css}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" th:href="@{/listar-articulos}">Granja ChickenTest</a>
+    </nav>
+    
+    <div class="container mt-4">
+        <h2>Agregar Artículo</h2>
+        <form th:action="@{/add}" method="post" th:object="${articulo}">
+            <div class="form-group">
+                <label for="name">Nombre</label>
+                <input type="text" class="form-control" id="name" th:field="*{name}" required>
+            </div>
+            <div class="form-group">
+                <label for="category">Categoría</label>
+                <select class="form-control" id="category" th:field="*{category.id}" required>
+                    <option value="">Seleccionar categoría</option>
+                    <option th:each="cat : ${categories}" 
+                            th:value="${cat.id}" 
+                            th:text="${cat.name}">
+                    </option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="units">Unidades</label>
+                <input type="number" class="form-control" id="units" th:field="*{units}" required min="1">
+            </div>
+            <div class="form-group">
+                <label for="price">Precio</label>
+                <input type="number" class="form-control" id="price" th:field="*{price}" required min="0">
+            </div>
+            <div class="form-group">
+                <label for="age">Edad</label>
+                <input type="number" class="form-control" id="age" th:field="*{age}" required min="0">
+            </div>
+            <div class="form-group">
+                <label for="production">Producción</label>
+                <input type="text" class="form-control" id="production" th:field="*{production}" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+        </form>
+    </div>
+</body>
+</html>

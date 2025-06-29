@@ -1,25 +1,33 @@
 package com.chickentest.domain;
 
-public enum Category {
-    EGG("Eggs"),
-    CHICKEN("Chickens");
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import javax.persistence.*;
+import java.util.List;
 
-    private final String displayName;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "categories")
+public class Category {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    Category(String displayName) {
+    @Column(nullable = false, unique = true)
+    private String name;
+
+    @Column(nullable = false)
+    private String displayName;
+
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
+    private List<Article> articles;
+
+    public Category(Long id, String name, String displayName) {
+        this.id = id;
+        this.name = name;
         this.displayName = displayName;
-    }
-
-    public String getDisplayName() {
-        return displayName;
-    }
-
-    public static Category fromDisplayName(String displayName) {
-        for (Category category : values()) {
-            if (category.displayName.equalsIgnoreCase(displayName)) {
-                return category;
-            }
-        }
-        throw new IllegalArgumentException("Invalid category: " + displayName);
     }
 }

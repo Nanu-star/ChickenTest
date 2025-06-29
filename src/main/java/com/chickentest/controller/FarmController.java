@@ -1,20 +1,23 @@
 package com.chickentest.controller;
 
 import com.chickentest.domain.Article;
+import com.chickentest.domain.Category;
+import com.chickentest.domain.Movement;
 import com.chickentest.domain.Report;
 import com.chickentest.domain.User;
 import com.chickentest.exception.FarmException;
 import com.chickentest.repository.UserRepository;
+import com.chickentest.repository.CategoryRepository;
 import com.chickentest.service.FarmService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -24,16 +27,149 @@ public class FarmController {
 
     private final FarmService farmService;
     private final UserRepository userRepository;
+    private final CategoryRepository categoryRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private static final Logger logger = Logger.getLogger(FarmController.class.getName());
 
     @Autowired
     public FarmController(FarmService farmService,
                           UserRepository userRepository,
+                          CategoryRepository categoryRepository,
                           BCryptPasswordEncoder passwordEncoder) {
         this.farmService = farmService;
         this.userRepository = userRepository;
+        this.categoryRepository = categoryRepository;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    @GetMapping("/dashboard/articles")
+    @PreAuthorize("isAuthenticated()")
+    public String articles(@AuthenticationPrincipal User user, Model model) {
+        try {
+            List<Article> articles = farmService.loadInventory(user);
+            model.addAttribute("articles", articles);
+            return "articles";
+        } catch (FarmException e) {
+            model.addAttribute("error", e.getMessage());
+            return "error";
+        } catch (Exception e) {
+            logger.severe("Unexpected error in articles: " + e.getMessage());
+            throw new FarmException("An unexpected error occurred while loading articles", e);
+        }
+    }
+
+    @GetMapping("/dashboard/articles/add")
+    @PreAuthorize("isAuthenticated()")
+    public String showAddArticleForm(@AuthenticationPrincipal User user, Model model) {
+        try {
+            List<Category> categories = farmService.getCategories();
+            model.addAttribute("categories", categories);
+            return "add-article";
+        } catch (Exception e) {
+            logger.severe("Error loading categories: " + e.getMessage());
+            model.addAttribute("error", "Failed to load categories");
+            return "error";
+        }
+    }
+
+    @PostMapping("/dashboard/articles/add")
+    @PreAuthorize("isAuthenticated()")
+    public String addArticle(@AuthenticationPrincipal User user, 
+                            @RequestParam String name,
+                            @RequestParam Long category,
+                            @RequestParam int units,
+                            @RequestParam double price,
+                            @RequestParam int age,
+                            Model model) {
+        try {
+            Article article = new Article();
+            article.setName(name);
+            article.setCategory(categoryRepository.findById(category)
+                .orElseThrow(() -> new RuntimeException("Category not found")));
+            article.setUnits(units);
+            article.setPrice(price);
+            article.setAge(age);
+            
+            if (farmService.addArticle(article)) {
+                return "redirect:/dashboard/articles?success";
+            }
+            
+            // If addArticle failed, show error and return to form
+            model.addAttribute("error", "Failed to add article. Please check the values and try again.");
+            List<Category> categories = farmService.getCategories();
+            model.addAttribute("categories", categories);
+            return "add-article";
+        } catch (Exception e) {
+            logger.severe("Error adding article: " + e.getMessage());
+            model.addAttribute("error", "An error occurred while adding the article");
+            return "error";
+        }
+    }
+
+    @PostMapping("/dashboard/articles/buy/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public String buyArticle(@PathVariable Long id, @RequestParam int cantidad, Model model) {
+        try {
+            User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            if (farmService.buy(id, cantidad, user)) {
+                return "redirect:/dashboard/articles?success";
+            }
+            model.addAttribute("error", "Insufficient balance or stock limit exceeded");
+            return "articles";
+        } catch (Exception e) {
+            logger.severe("Error buying article: " + e.getMessage());
+            model.addAttribute("error", "An error occurred while buying the article");
+            return "articles";
+        }
+    }
+
+    @PostMapping("/dashboard/articles/sell/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public String sellArticle(@PathVariable Long id, @RequestParam int cantidad, Model model) {
+        try {
+            User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            if (farmService.sell(id, cantidad, user)) {
+                return "redirect:/dashboard/articles?success";
+            }
+            model.addAttribute("error", "Insufficient units available");
+            return "articles";
+        } catch (Exception e) {
+            logger.severe("Error selling article: " + e.getMessage());
+            model.addAttribute("error", "An error occurred while selling the article");
+            return "articles";
+        }
+    }
+
+    @GetMapping("/dashboard/movements")
+    @PreAuthorize("isAuthenticated()")
+    public String movements(@AuthenticationPrincipal User user, Model model) {
+        try {
+            List<Movement> movements = farmService.getMovements(user);
+            model.addAttribute("movements", movements);
+            return "movements";
+        } catch (FarmException e) {
+            model.addAttribute("error", e.getMessage());
+            return "error";
+        } catch (Exception e) {
+            logger.severe("Unexpected error in movements: " + e.getMessage());
+            throw new FarmException("An unexpected error occurred while loading movements", e);
+        }
+    }
+
+    @GetMapping("/dashboard/categories")
+    @PreAuthorize("isAuthenticated()")
+    public String categories(Model model) {
+        try {
+            List<Category> categories = farmService.getCategories();
+            model.addAttribute("categories", categories);
+            return "categories";
+        } catch (FarmException e) {
+            model.addAttribute("error", e.getMessage());
+            return "error";
+        } catch (Exception e) {
+            logger.severe("Unexpected error in categories: " + e.getMessage());
+            throw new FarmException("An unexpected error occurred while loading categories", e);
+        }
     }
 
     @GetMapping("/login")
@@ -48,7 +184,7 @@ public class FarmController {
     }
 
     @PostMapping("/register")
-    public String register(@ModelAttribute @Valid User user, RedirectAttributes redirectAttributes) {
+    public String register(@ModelAttribute("user") User user, RedirectAttributes redirectAttributes) {
         try {
             Optional<User> existingUser = userRepository.findByUsername(user.getUsername());
             if (existingUser.isPresent()) {
@@ -67,21 +203,7 @@ public class FarmController {
         }
     }
 
-    @GetMapping("/dashboard")
-    @PreAuthorize("isAuthenticated()")
-    public String dashboard(@AuthenticationPrincipal User user, Model model) {
-        try {
-            List<Article> articles = farmService.loadInventory(user);
-            model.addAttribute("articles", articles);
-            return "dashboard";
-        } catch (FarmException e) {
-            model.addAttribute("error", e.getMessage());
-            return "error";
-        } catch (Exception e) {
-            logger.severe("Unexpected error in dashboard: " + e.getMessage());
-            throw new FarmException("An unexpected error occurred", e);
-        }
-    }
+
 
     @PostMapping("/buy")
     @PreAuthorize("isAuthenticated()")
@@ -128,7 +250,7 @@ public class FarmController {
     public String report(Model model) {
         try {
             Report report = farmService.generateReport();
-            model.addAttribute("reporte", report);
+            model.addAttribute("report", report);
             return "movimientos-reporte";
         } catch (FarmException e) {
             model.addAttribute("error", e.getMessage());

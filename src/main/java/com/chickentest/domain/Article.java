@@ -5,7 +5,8 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.util.Date;
 import java.util.List;
-import jakarta.persistence.*;
+
+import javax.persistence.*;
 
 @Data
 @NoArgsConstructor

@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
+import javax.persistence.*;
 
 @Entity
 @Table(name = "movements")
@@ -28,6 +28,9 @@ public class Movement {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MovementType type;
+    
+    @Column(nullable = false)
+    private Integer units;
     
     @Column(nullable = false)
     private double amount;

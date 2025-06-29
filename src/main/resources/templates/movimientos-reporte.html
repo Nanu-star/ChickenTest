@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{base :: layout(~{:: #content}, 'Movimientos')}">
+<body>
+    <div id="content">
+        <h2>Movimientos</h2>
+        
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Artículo</th>
+                                    <th>Cantidad</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="movimiento : ${report.movimientos}">
+                                    <td th:text="${movimiento.tipo}"></td>
+                                    <td th:text="${movimiento.articulo.nombre}"></td>
+                                    <td th:text="${movimiento.cantidad}"></td>
+                                    <td th:text="${#temporals.format(movimiento.fecha, 'dd/MM/yyyy HH:mm')}"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

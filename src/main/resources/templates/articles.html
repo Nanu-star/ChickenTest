@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Articles - ChickenTest</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <div class="container">
+        <h1>Articles</h1>
+        <div class="actions">
+            <a href="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+            <a href="/dashboard/articles/add" class="btn btn-primary">Add New Article</a>
+        </div>
+
+        <div class="container mt-4">
+            <h2>Articles</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Units</th>
+                        <th>Price</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="article : ${articles}">
+                        <td th:text="${article.name}"></td>
+                        <td th:text="${article.category.displayName}"></td>
+                        <td th:text="${article.units}"></td>
+                        <td th:text="${#numbers.formatDecimal(article.price, 2, 2)}"></td>
+                        <td>
+                            <form th:action="@{/dashboard/articles/buy/{id}(id=${article.id})}" method="post" style="display: inline;">
+                                <div class="input-group">
+                                    <input type="number" name="cantidad" class="form-control" min="1" required placeholder="Quantity">
+                                    <button type="submit" class="btn btn-success">Buy</button>
+                                </div>
+                            </form>
+                            <form th:action="@{/dashboard/articles/sell/{id}(id=${article.id})}" method="post" style="display: inline;">
+                                <div class="input-group">
+                                    <input type="number" name="cantidad" class="form-control" min="1" required placeholder="Quantity">
+                                    <button type="submit" class="btn btn-warning">Sell</button>
+                                </div>
+                            </form>
+                            <a th:href="@{/dashboard/articles/edit/{id}(id=${article.id})}" class="btn btn-primary btn-sm">Edit</a>
+                            <form th:action="@{/dashboard/articles/delete/{id}(id=${article.id})}" method="post" style="display: inline;">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this article?')">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <a href="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .actions {
+            margin-bottom: 20px;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .table th, .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .table th {
+            background-color: #f8f9fa;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .btn {
+            padding: 5px 10px;
+            margin: 0 5px;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            color: #000;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</body>
+</html>
