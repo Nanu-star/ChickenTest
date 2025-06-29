@@ -28,13 +28,20 @@ public class FarmService {
     private final MovementRepository movementRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final Category chickensCategory;
+    private final Category eggsCategory;
 
     @Autowired
-    public FarmService(ArticleRepository articleRepository, MovementRepository movementRepository, CategoryRepository categoryRepository, UserRepository userRepository) {
+    public FarmService(ArticleRepository articleRepository,
+                       MovementRepository movementRepository,
+                       CategoryRepository categoryRepository,
+                       UserRepository userRepository) {
         this.articleRepository = articleRepository;
         this.movementRepository = movementRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
+        this.chickensCategory = categoryRepository.findByDisplayName("Chickens");
+        this.eggsCategory = categoryRepository.findByDisplayName("Eggs");
     }
 
     @Transactional(readOnly = true)
@@ -66,35 +73,22 @@ public class FarmService {
     @Transactional
     public boolean buy(Long articleId, int quantity, User user) {
         try {
-            Optional<Article> optionalArticle = articleRepository.findById(articleId);
-            if (!optionalArticle.isPresent()) {
-                throw new RuntimeException("Article not found with id: " + articleId);
+            if (quantity <= 0) {
+                throw new FarmException("Quantity must be positive");
             }
-            Article article = optionalArticle.get();
-            
+            Article article = articleRepository.findById(articleId)
+                .orElseThrow(() -> new FarmException("Article not found with id: " + articleId));
             double amount = article.getPrice() * quantity;
-            
+
             if (amount > user.getBalance()) {
                 return false;
             }
-            
+
             if (!checkStockLimit(article, quantity)) {
                 return false;
             }
-            
-            // Update article units
-            article.setUnits(article.getUnits() + quantity);
-            articleRepository.save(article);
-            
-            // Update user balance
-            user.setBalance(user.getBalance() - amount);
-            userRepository.save(user);
-            
-            // Create and save movement
-            Movement movimiento = Movement.createMovement(article, amount, user.getUsername());
-            movimiento.setType(MovementType.PURCHASE);
-            movementRepository.save(movimiento);
-            
+
+            performTransaction(article, quantity, amount, MovementType.PURCHASE, user);
             return true;
         } catch (Exception e) {
             throw new FarmException("Error during buy operation: " + e.getMessage(), e);
@@ -104,39 +98,31 @@ public class FarmService {
     @Transactional
     public boolean sell(Long articleId, int quantity, User user) {
         try {
+            if (quantity <= 0) {
+                throw new FarmException("Quantity must be positive");
+            }
             Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new RuntimeException("Article not found"));
-            
+                .orElseThrow(() -> new FarmException("Article not found"));
+
             if (article.getUnits() < quantity) {
                 return false;
             }
-            
+
             double amount = article.getPrice() * quantity;
-            int nuevoStock = article.getUnits() - quantity;
-            
-            article.setUnits(nuevoStock);
-            double nuevoSaldo = user.getBalance() + amount;
-            
-            Movement movimiento = Movement.createMovement(article, amount, user.getUsername());
-            movimiento.setType(MovementType.SALE);
-            
-            articleRepository.save(article);
-            movementRepository.save(movimiento);
-            user.setBalance(nuevoSaldo);
-            userRepository.save(user);
-            
+
+            performTransaction(article, quantity, amount, MovementType.SALE, user);
             return true;
         } catch (Exception e) {
             throw new FarmException("Error during sell operation: " + e.getMessage(), e);
         }
     }
 
-    public boolean addArticle(Article articulo) throws Exception {
-        if (!checkStockLimit(articulo, articulo.getUnits())) {
+    public boolean addArticle(Article article) throws Exception {
+        if (!checkStockLimit(article, article.getUnits())) {
             return false;
         }
-        
-        articleRepository.save(articulo);
+
+        articleRepository.save(article);
         return true;
     }
 
@@ -145,8 +131,8 @@ public class FarmService {
             .orElseThrow(() -> new RuntimeException("Article not found"));
     }
 
-    public void updateArticle(Article articulo) throws Exception {
-        articleRepository.save(articulo);
+    public void updateArticle(Article article) throws Exception {
+        articleRepository.save(article);
     }
 
     public void deleteArticle(Long id) throws Exception {
@@ -156,21 +142,21 @@ public class FarmService {
     public Report generateReport() {
         Report report = Report.builder()
             .date(LocalDate.now().toString())
-            .totalEggs(articleRepository.findTotalUnitsByCategory(categoryRepository.findByDisplayName("Eggs")))
-            .totalChickens(articleRepository.findTotalUnitsByCategory(categoryRepository.findByDisplayName("Chickens")))
+            .totalEggs(articleRepository.findTotalUnitsByCategory(eggsCategory))
+            .totalChickens(articleRepository.findTotalUnitsByCategory(chickensCategory))
             .producedBatches(movementRepository.countProducedBatches(MovementType.PRODUCTION).intValue())
             .totalSales(movementRepository.calculateTotalSales(MovementType.SALE))
             .build();
         return report;
     }
-    private boolean checkStockLimit(Article article, int quantity) throws Exception {
-        int chickens = articleRepository.findTotalUnitsByCategory(categoryRepository.findByDisplayName("Chickens"));
-        int eggs = articleRepository.findTotalUnitsByCategory(categoryRepository.findByDisplayName("Eggs"));
+    private boolean checkStockLimit(Article article, int quantity) {
+        int chickens = articleRepository.findTotalUnitsByCategory(chickensCategory);
+        int eggs = articleRepository.findTotalUnitsByCategory(eggsCategory);
 
-        if (article.getCategory().equals(categoryRepository.findByDisplayName("Eggs")) && article.getUnits() + eggs > 2000) {
+        if (article.getCategory().equals(eggsCategory) && eggs + quantity > 2000) {
             return false;
         }
-        if (article.getCategory().equals(categoryRepository.findByDisplayName("Chickens")) && article.getUnits() + chickens > 1500) {
+        if (article.getCategory().equals(chickensCategory) && chickens + quantity > 1500) {
             return false;
         }
         return true;
@@ -179,12 +165,27 @@ public class FarmService {
     private Article generateDailyBatch(int CHICKEN) {
         int huevos = CHICKEN * 3;
         Article article = new Article();
-        article.setCategory(categoryRepository.findByDisplayName("Eggs"));
+        article.setCategory(eggsCategory);
         article.setUnits(huevos);
         article.setProduction("chickentest");
         article.setPrice(1.5);
         article.setAge(0);
         return article;
+    }
+
+    private void performTransaction(Article article, int quantity, double amount, MovementType type, User user) {
+        int updatedUnits = type == MovementType.PURCHASE ? article.getUnits() + quantity : article.getUnits() - quantity;
+        article.setUnits(updatedUnits);
+
+        double updatedBalance = type == MovementType.PURCHASE ? user.getBalance() - amount : user.getBalance() + amount;
+        user.setBalance(updatedBalance);
+
+        Movement movement = Movement.createMovement(article, quantity, amount, user.getUsername());
+        movement.setType(type);
+
+        articleRepository.save(article);
+        userRepository.save(user);
+        movementRepository.save(movement);
     }
 
     @Transactional(readOnly = true)

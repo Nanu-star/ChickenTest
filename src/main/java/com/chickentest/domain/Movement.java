@@ -38,9 +38,10 @@ public class Movement {
     @Column(nullable = false)
     private String username;
 
-    public static Movement createMovement(Article article, double amount, String username) {
+    public static Movement createMovement(Article article, int units, double amount, String username) {
         return Movement.builder()
                 .article(article)
+                .units(units)
                 .amount(amount)
                 .username(username)
                 .date(new Date())
@@ -48,21 +49,23 @@ public class Movement {
                 .build();
     }
 
-    public static Movement createMovement(Article article, Date date, MovementType type, double amount, String username) {
+    public static Movement createMovement(Article article, Date date, MovementType type, int units, double amount, String username) {
         return Movement.builder()
                 .article(article)
                 .date(date)
                 .type(type)
+                .units(units)
                 .amount(amount)
                 .username(username)
                 .build();
     }
 
-    public static Movement createMovement(Article article, Date date, String type, double amount, String username) {
+    public static Movement createMovement(Article article, Date date, String type, int units, double amount, String username) {
         return Movement.builder()
                 .article(article)
                 .date(date)
                 .type(MovementType.fromDescription(type))
+                .units(units)
                 .amount(amount)
                 .username(username)
                 .build();
