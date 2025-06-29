@@ -1,0 +1,4 @@
+ALTER TABLE articles
+    ADD COLUMN age INT NOT NULL DEFAULT 0,
+    ADD COLUMN production VARCHAR(255),
+    ADD COLUMN display_price VARCHAR(255);
