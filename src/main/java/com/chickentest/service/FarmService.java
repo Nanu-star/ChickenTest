@@ -64,7 +64,7 @@ public class FarmService {
     }
 
     @Transactional
-    public boolean buy(Long articleId, int cantidad, User user) {
+    public boolean buy(Long articleId, int quantity, User user) {
         try {
             Optional<Article> optionalArticle = articleRepository.findById(articleId);
             if (!optionalArticle.isPresent()) {
@@ -72,26 +72,26 @@ public class FarmService {
             }
             Article article = optionalArticle.get();
             
-            double monto = article.getPrice() * cantidad;
+            double amount = article.getPrice() * quantity;
             
-            if (monto > user.getBalance()) {
+            if (amount > user.getBalance()) {
                 return false;
             }
             
-            if (!checkStockLimit(article, cantidad)) {
+            if (!checkStockLimit(article, quantity)) {
                 return false;
             }
             
             // Update article units
-            article.setUnits(article.getUnits() + cantidad);
+            article.setUnits(article.getUnits() + quantity);
             articleRepository.save(article);
             
             // Update user balance
-            user.setBalance(user.getBalance() - monto);
+            user.setBalance(user.getBalance() - amount);
             userRepository.save(user);
             
             // Create and save movement
-            Movement movimiento = Movement.createMovement(article, monto, user.getUsername());
+            Movement movimiento = Movement.createMovement(article, amount, user.getUsername());
             movimiento.setType(MovementType.PURCHASE);
             movementRepository.save(movimiento);
             
@@ -102,22 +102,22 @@ public class FarmService {
     }
 
     @Transactional
-    public boolean sell(Long articleId, int cantidad, User user) {
+    public boolean sell(Long articleId, int quantity, User user) {
         try {
             Article article = articleRepository.findById(articleId)
                 .orElseThrow(() -> new RuntimeException("Article not found"));
             
-            if (article.getUnits() < cantidad) {
+            if (article.getUnits() < quantity) {
                 return false;
             }
             
-            double monto = article.getPrice() * cantidad;
-            int nuevoStock = article.getUnits() - cantidad;
+            double amount = article.getPrice() * quantity;
+            int nuevoStock = article.getUnits() - quantity;
             
             article.setUnits(nuevoStock);
-            double nuevoSaldo = user.getBalance() + monto;
+            double nuevoSaldo = user.getBalance() + amount;
             
-            Movement movimiento = Movement.createMovement(article, monto, user.getUsername());
+            Movement movimiento = Movement.createMovement(article, amount, user.getUsername());
             movimiento.setType(MovementType.SALE);
             
             articleRepository.save(article);
@@ -163,7 +163,7 @@ public class FarmService {
             .build();
         return report;
     }
-    private boolean checkStockLimit(Article article, int cantidad) throws Exception {
+    private boolean checkStockLimit(Article article, int quantity) throws Exception {
         int chickens = articleRepository.findTotalUnitsByCategory(categoryRepository.findByDisplayName("Chickens"));
         int eggs = articleRepository.findTotalUnitsByCategory(categoryRepository.findByDisplayName("Eggs"));
 

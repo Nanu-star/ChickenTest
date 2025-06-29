@@ -33,13 +33,13 @@
                         <td>
                             <form th:action="@{/dashboard/articles/buy/{id}(id=${article.id})}" method="post" style="display: inline;">
                                 <div class="input-group">
-                                    <input type="number" name="cantidad" class="form-control" min="1" required placeholder="Quantity">
+                                    <input type="number" name="quantity" class="form-control" min="1" required placeholder="Quantity">
                                     <button type="submit" class="btn btn-success">Buy</button>
                                 </div>
                             </form>
                             <form th:action="@{/dashboard/articles/sell/{id}(id=${article.id})}" method="post" style="display: inline;">
                                 <div class="input-group">
-                                    <input type="number" name="cantidad" class="form-control" min="1" required placeholder="Quantity">
+                                    <input type="number" name="quantity" class="form-control" min="1" required placeholder="Quantity">
                                     <button type="submit" class="btn btn-warning">Sell</button>
                                 </div>
                             </form>
