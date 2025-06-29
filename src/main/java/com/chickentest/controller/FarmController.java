@@ -108,10 +108,10 @@ public class FarmController {
 
     @PostMapping("/dashboard/articles/buy/{id}")
     @PreAuthorize("isAuthenticated()")
-    public String buyArticle(@PathVariable Long id, @RequestParam int cantidad, Model model) {
+    public String buyArticle(@PathVariable Long id, @RequestParam int quantity, Model model) {
         try {
             User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            if (farmService.buy(id, cantidad, user)) {
+            if (farmService.buy(id, quantity, user)) {
                 return "redirect:/dashboard/articles?success";
             }
             model.addAttribute("error", "Insufficient balance or stock limit exceeded");
@@ -125,10 +125,10 @@ public class FarmController {
 
     @PostMapping("/dashboard/articles/sell/{id}")
     @PreAuthorize("isAuthenticated()")
-    public String sellArticle(@PathVariable Long id, @RequestParam int cantidad, Model model) {
+    public String sellArticle(@PathVariable Long id, @RequestParam int quantity, Model model) {
         try {
             User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            if (farmService.sell(id, cantidad, user)) {
+            if (farmService.sell(id, quantity, user)) {
                 return "redirect:/dashboard/articles?success";
             }
             model.addAttribute("error", "Insufficient units available");
@@ -208,11 +208,11 @@ public class FarmController {
     @PostMapping("/buy")
     @PreAuthorize("isAuthenticated()")
     public String buy(@RequestParam Long articleId,
-                      @RequestParam int cantidad,
+                      @RequestParam int quantity,
                       @AuthenticationPrincipal User user,
                       RedirectAttributes redirectAttributes) {
         try {
-            if (!farmService.buy(articleId, cantidad, user)) {
+            if (!farmService.buy(articleId, quantity, user)) {
                 redirectAttributes.addFlashAttribute("error", "Insufficient balance or stock limit reached");
             }
             return "redirect:/dashboard";
@@ -228,11 +228,11 @@ public class FarmController {
     @PostMapping("/sell")
     @PreAuthorize("isAuthenticated()")
     public String sell(@RequestParam Long articleId,
-                       @RequestParam int cantidad,
+                       @RequestParam int quantity,
                        @AuthenticationPrincipal User user,
                        RedirectAttributes redirectAttributes) {
         try {
-            if (!farmService.sell(articleId, cantidad, user)) {
+            if (!farmService.sell(articleId, quantity, user)) {
                 redirectAttributes.addFlashAttribute("error", "Not enough items in stock to sell");
             }
             return "redirect:/dashboard";
