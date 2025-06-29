@@ -32,3 +32,12 @@ Opcionales:
 -Las gallinas fallecen pasados [] días. 
 
 -Las gallinas ponen [] huevos cada [] días. 
+
+### Spring Boot
+Para ejecutar la aplicación utilizando Spring Boot simplemente ejecute:
+
+```bash
+mvn spring-boot:run
+```
+
+Esto compilará el proyecto y levantará el servidor embebido de Spring Boot.

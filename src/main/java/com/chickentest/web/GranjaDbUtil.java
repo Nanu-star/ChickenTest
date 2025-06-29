@@ -1,39 +1,43 @@
 package com.chickentest.web;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
 import javax.sql.DataSource;
 
+@Component
 
 
 public class GranjaDbUtil {
 	private DataSource dataSource;
 	
+@Autowired
 	public GranjaDbUtil(DataSource theDataSource) {
 		dataSource = theDataSource;
 	}
 	
 //LOGIN-------------------------------------------------------------------------------------
-	public Usuarios obtengoUsuario(String usuario, String contrase馻) throws Exception {		
+	public Usuarios obtengoUsuario(String usuario, String contrase帽a) throws Exception {		
 		Usuarios user = null;
 		Connection myConn=null;
 		PreparedStatement myStmt = null;
 		ResultSet myRs = null;
 		
 		try{
-			//obtener una conexi髇
+			//obtener una conexi贸n
 			myConn = dataSource.getConnection();
 			//crear sentencias
 			String sql = "select * from usuarios where (username=? and password=?)";
 			myStmt = myConn.prepareStatement(sql);
 			myStmt.setString(1, usuario);
-			myStmt.setString(2, contrase馻);
+			myStmt.setString(2, contrase帽a);
 			
 			//ejecutar query
 			myRs = myStmt.executeQuery();
 			//procesar resultado
 			if (myRs.next()) {
-				//Debo crear el usuario para la sesi髇
+				//Debo crear el usuario para la sesi贸n
 				String username = myRs.getString("username");
 				String password = myRs.getString("password");
 				double saldo = Double.parseDouble((myRs.getString("saldo")));
@@ -55,14 +59,14 @@ public class GranjaDbUtil {
 			Connection myConn = null;
 			PreparedStatement myStmt=null;
 			try {
-			//obtener la conexi髇
+			//obtener la conexi贸n
 			myConn = dataSource.getConnection();
 			
 			//crear el update sql
 			String sql = "update usuarios " + "set saldo=?" + "where username=?";
 			//preparar la sentencia
 			myStmt = myConn.prepareStatement(sql);
-			//setear par醡etros
+			//setear par谩metros
 
 			myStmt.setDouble(1, saldo);
 			myStmt.setString(2, username);
@@ -87,7 +91,7 @@ public class GranjaDbUtil {
 		ResultSet myRs = null;
 		
 		try{
-			//obtener una conexi髇
+			//obtener una conexi贸n
 			myConn = dataSource.getConnection();
 			//crear sentencias
 			String sql = "select * from articulos order by nombre";
@@ -134,12 +138,12 @@ public class GranjaDbUtil {
 			String sql = "select sum(stock) from articulos where categoria like (?)";
 			//crear la sentencia preparada
 			myStmt = myConn.prepareStatement(sql);
-			//setear par醡etros
+			//setear par谩metros
 			tipo = "%" + tipo + "%";
 			myStmt.setString(1, tipo);
 			//ejecutar sentencia
 			myRs = myStmt.executeQuery();
-			//obtener la informaci髇 de la l韓ea obtenida
+			//obtener la informaci贸n de la l铆nea obtenida
 			if (myRs.next()) {//si procesa lineas..
 				int stock = myRs.getInt("sum(stock)");
 				return stock;
@@ -206,11 +210,11 @@ public class GranjaDbUtil {
 				String sql = "select * from articulos where idarticulo=?";
 				//crear la sentencia preparada
 				myStmt = myConn.prepareStatement(sql);
-				//setear par醡etros
+				//setear par谩metros
 				myStmt.setInt(1, articuloId);
 				//ejecutar sentencia
 				myRs = myStmt.executeQuery();
-				//obtener la informaci髇 de la l韓ea obtenida
+				//obtener la informaci贸n de la l铆nea obtenida
 				if (myRs.next()) {//si procesa lineas..
 					int unidades = myRs.getInt("unidades");
 					int stock = myRs.getInt("stock");
@@ -250,7 +254,7 @@ public class GranjaDbUtil {
 								 + "values (?, ?, ?, ?, ?, ?, ?, ?)";
 					myStmt = myConn.prepareStatement(sql);
 					
-					//setear los par醡etros para el estudiante
+					//setear los par谩metros para el estudiante
 					myStmt.setInt(1, elArticulo.getId());
 					myStmt.setString(2, elArticulo.getNombre());
 					myStmt.setString(3, elArticulo.getCategoria());
@@ -277,7 +281,7 @@ public class GranjaDbUtil {
 			Connection myConn = null;
 			PreparedStatement myStmt=null;
 			try {
-			//obtener la conexi髇
+			//obtener la conexi贸n
 			myConn = dataSource.getConnection();
 			
 			//crear el update sql
@@ -285,7 +289,7 @@ public class GranjaDbUtil {
 					+ "unidades=?, stock=?, precio=?, creacion=? where idarticulo=?";
 			//preparar la sentencia
 			myStmt = myConn.prepareStatement(sql);
-			//setear par醡etros
+			//setear par谩metros
 
 			myStmt.setString(1, elArticulo.getNombre());
 			myStmt.setString(2, elArticulo.getCategoria());
@@ -309,13 +313,13 @@ public class GranjaDbUtil {
 			try {
 				//convertir el id a int
 				int articuloId = Integer.parseInt(ArticuloId);
-				//obtener la conexi髇
+				//obtener la conexi贸n
 				myConn = dataSource.getConnection();
 				//crear sql para eliminar estudiante
 				String sql = "delete from articulos where idarticulo=?";
 				//preparar la sentencia
 				myStmt = myConn.prepareStatement(sql);
-				//setear par醡etros
+				//setear par谩metros
 				myStmt.setInt(1, articuloId);
 				//ejecutar la sentencia 
 				myStmt.execute();
@@ -338,7 +342,7 @@ public class GranjaDbUtil {
 							 + "values (?, ?, ?, ?, ?)";
 				myStmt = myConn.prepareStatement(sql);
 				
-				//setear los par醡etros para el estudiante
+				//setear los par谩metros para el estudiante
 				myStmt.setString(1, movimiento.getArticulo());
 				//myStmt.setString(2, movimiento.getNombre());
 				myStmt.setDate(2, java.sql.Date.valueOf(java.time.LocalDate.now()));
@@ -367,7 +371,7 @@ public class GranjaDbUtil {
 			ResultSet myRs = null;
 			
 			try{
-				//obtener una conexi髇
+				//obtener una conexi贸n
 				myConn = dataSource.getConnection();
 				//crear sentencias
 				String sql = "select * from movimientos order by fecha";
@@ -407,7 +411,7 @@ public class GranjaDbUtil {
 					myStmt.close();
 				}
 				if (myConn!=null) {
-					myConn.close();//devuelve la conexi髇 a disponible a la pool
+					myConn.close();//devuelve la conexi贸n a disponible a la pool
 				}
 			}
 			catch (Exception exc) {

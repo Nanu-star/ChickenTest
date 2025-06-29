@@ -3,40 +3,36 @@ package com.chickentest.web;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
-import javax.annotation.Resource;
-import javax.servlet.RequestDispatcher;
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.sql.DataSource;
 
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 
 
 /**
  * Servlet implementation class GranjaControlador
  */
-@WebServlet("/GranjaControlador")
-public class GranjaControlador extends HttpServlet {
-	private static final long serialVersionUID = 1L;
+@Controller
+@RequestMapping("/GranjaControlador")
+public class GranjaControlador  {
 
-	private GranjaDbUtil granjaDbUtil;
-	
-	@Resource(name="jdbc/ChickenTestWeb")
-	private DataSource dataSource;
-	
-	@Override
-	public void init() throws ServletException {
-		// crea la granjaDbUtil y la pasa a la conexión en el pool
-		super.init();
-		granjaDbUtil = new GranjaDbUtil(dataSource);
-			
-		}
+    private final GranjaDbUtil granjaDbUtil;
+
+    @Autowired
+    public GranjaControlador(GranjaDbUtil granjaDbUtil) {
+        this.granjaDbUtil = granjaDbUtil;
+    }
+
 	
 	
-	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    @GetMapping
+    public void handle(HttpServletRequest request, HttpServletResponse response) throws Exception {
 		try{
 			String theCommand = request.getParameter("command");
 			if (theCommand == null) {
@@ -82,7 +78,7 @@ public class GranjaControlador extends HttpServlet {
 						
 		}
 		catch(Exception exc) {
-			throw new ServletException(exc);
+			throw new RuntimeException(exc);
 		}
 	}
 
@@ -93,8 +89,8 @@ public class GranjaControlador extends HttpServlet {
 	//MANEJO DE SESION
 	private void iniciarSesion(HttpServletRequest request, HttpServletResponse response) throws Exception{
 		String usuario = request.getParameter("usuario");
-		String contraseña = request.getParameter("password");
-		Usuarios user = granjaDbUtil.obtengoUsuario(usuario, contraseña);
+		String contraseÃ±a = request.getParameter("password");
+		Usuarios user = granjaDbUtil.obtengoUsuario(usuario, contraseÃ±a);
 		
 		if (user != null){
 			request.getSession().setAttribute("USER", user);
@@ -109,7 +105,7 @@ public class GranjaControlador extends HttpServlet {
 	}
 	private void actualizoUsuario(HttpServletRequest request, HttpServletResponse response) throws Exception {
 		Usuarios user = (Usuarios)request.getSession().getAttribute("USER");
-		Usuarios usuarioActualizado = granjaDbUtil.obtengoUsuario(user.getUsuario(), user.getContraseña());
+		Usuarios usuarioActualizado = granjaDbUtil.obtengoUsuario(user.getUsuario(), user.getContraseÃ±a());
 		request.getSession().setAttribute("USER", usuarioActualizado);
 	}
 	private void cerrarSesion(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -122,12 +118,12 @@ public class GranjaControlador extends HttpServlet {
 		//Inicia la venta, se genera la lista con los articulos en el sistema
 		String articuloId = request.getParameter("articuloId");
 		String cantidad = request.getParameter("cantidad");
-		//Si el usuario eligió la cantidad a comprar continúa el proceso de venta
+		//Si el usuario eligiÃ³ la cantidad a comprar continÃºa el proceso de venta
 		if (cantidad != null && articuloId!=null) {
-			//Si se selecciona un articulo vuelve a ingresar al método con un id
+			//Si se selecciona un articulo vuelve a ingresar al mÃ©todo con un id
 			//obtengo los datos del usuario
 			Usuarios user = (Usuarios)request.getSession().getAttribute("USER");
-			//traigo el artículo seleccionado
+			//traigo el artÃ­culo seleccionado
 					
 			Articulos elArticulo = granjaDbUtil.obtengoArticulo(articuloId);
 				
@@ -145,7 +141,7 @@ public class GranjaControlador extends HttpServlet {
 				Double nuevoSaldo=(user.getSaldo() + monto); 
 				Movimientos movimiento = new Movimientos(elArticulo.getCategoria(), monto, user.getUsuario());
 				
-				//y luego actualizo saldo, artículo y registro el movimiento
+				//y luego actualizo saldo, artÃ­culo y registro el movimiento
 				granjaDbUtil.modificarArticulo(elArticulo);
 				granjaDbUtil.registroMovimiento(movimiento, "venta");
 				granjaDbUtil.actualizoSaldo(user.getUsuario(), nuevoSaldo);
@@ -161,12 +157,12 @@ public class GranjaControlador extends HttpServlet {
 		//Inicia la compra, se genera la lista con los articulos en el sistema
 		String articuloId = request.getParameter("articuloId");
 		String cantidad = request.getParameter("cantidad");
-		//Si el usuario eligió la cantidad a comprar continúa el proceso de compra
+		//Si el usuario eligiÃ³ la cantidad a comprar continÃºa el proceso de compra
 		if (cantidad != null && articuloId!=null) {
-			//Si se selecciona un articulo vuelve a ingresar al método con un id
+			//Si se selecciona un articulo vuelve a ingresar al mÃ©todo con un id
 			//obtengo los datos del usuario
 			Usuarios user = (Usuarios)request.getSession().getAttribute("USER");
-			//traigo el artículo seleccionado
+			//traigo el artÃ­culo seleccionado
 			
 			Articulos elArticulo = granjaDbUtil.obtengoArticulo(articuloId);
 			
@@ -180,7 +176,7 @@ public class GranjaControlador extends HttpServlet {
 			}else{
 				if (calculoStock(elArticulo)) {
 					Movimientos movimiento = new Movimientos(elArticulo.getCategoria(), monto, user.getUsuario());
-					//y luego actualizo saldo, artículo y registro el movimiento
+					//y luego actualizo saldo, artÃ­culo y registro el movimiento
 					granjaDbUtil.registroMovimiento(movimiento, "compra");
 					granjaDbUtil.actualizoSaldo(user.getUsuario(), nuevoSaldo);
 					actualizoUsuario(request, response);
@@ -239,7 +235,7 @@ public class GranjaControlador extends HttpServlet {
 		Articulos elArticulo = new Articulos(gallinas, "Lote ChickenTest", 1200.00, "Huevos", 0, 1, "Granja ChickenTest", java.sql.Date.valueOf(java.time.LocalDate.now()), "1200.00");
 		granjaDbUtil.agregoArticulo(elArticulo);//
 		Movimientos movimiento = new Movimientos(elArticulo.getCategoria(), 0, "ChickenTest");
-		granjaDbUtil.registroMovimiento(movimiento, "producción");	
+		granjaDbUtil.registroMovimiento(movimiento, "producciÃ³n");	
 		return elArticulo;
 		
 	}
@@ -251,7 +247,7 @@ public class GranjaControlador extends HttpServlet {
 		Articulos elArticulo = granjaDbUtil.obtengoArticulo(articuloId);
 		//colocarlo al estudiante en el atributo del request
 		request.getSession().setAttribute("EL_ARTICULO", elArticulo);
-		//enviarlo al formulario de actualización jsp
+		//enviarlo al formulario de actualizaciÃ³n jsp
 		RequestDispatcher dispatcher = request.getRequestDispatcher("/modificar-articulo.jsp");
 		dispatcher.forward(request, response);
 		
@@ -344,7 +340,7 @@ public class GranjaControlador extends HttpServlet {
 					elReporte.setCantLotesV(elReporte.getCantLotesV()+1);
 					elReporte.setMontoVentas(elReporte.getMontoVentas() + movimiento.getMonto());
 				}
-				if (movimiento.getTipo().toLowerCase().contains("producción")) {
+				if (movimiento.getTipo().toLowerCase().contains("producciÃ³n")) {
 					elReporte.setCantLotesProducidos(elReporte.getCantLotesProducidos()+1);
 				}
 			
