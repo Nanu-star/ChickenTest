@@ -12,4 +12,8 @@ import com.chickentest.domain.Category;
 public interface ArticleRepository extends JpaRepository<Article, Long> {
     @Query("SELECT COALESCE(SUM(units), 0) FROM Article WHERE category = :category")
     int findTotalUnitsByCategory(@Param("category") Category category);
+
+    java.util.List<Article> findByCategory(Category category);
+
+    java.util.Optional<Article> findByNameAndCategory(String name, Category category);
 }
