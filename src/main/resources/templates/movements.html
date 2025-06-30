@@ -6,18 +6,29 @@
 </head>
 <body>
     <div class="container">
-        <h1>Movements</h1>
+        <div class="page-header">
+            <h1>Movements History</h1>
+            <p class="lead">View all transaction movements in your farm</p>
+        </div>
         
         <div class="actions">
-            <a href="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+            <a href="/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+
+        <div th:if="${param.success}" class="alert alert-success">
+            <p>Successfully loaded movements.</p>
+        </div>
+        <div th:if="${error}" class="alert alert-danger">
+            <p th:text="${error}">Error occurred.</p>
         </div>
 
         <div class="table-responsive">
-            <table class="table">
-                <thead>
+            <table class="table table-striped">
+                <thead class="thead-dark">
                     <tr>
                         <th>Date</th>
                         <th>Article</th>
+                        <th>Category</th>
                         <th>Type</th>
                         <th>Units</th>
                         <th>Amount</th>
@@ -25,11 +36,15 @@
                 </thead>
                 <tbody>
                     <tr th:each="movement : ${movements}">
-                        <td th:text="${#temporals.format(movement.date, 'yyyy-MM-dd HH:mm:ss')}"></td>
+                        <td th:text="${#dates.format(movement.date, 'dd MMM yyyy HH:mm')}"></td>
                         <td th:text="${movement.article.name}"></td>
+                        <td th:text="${movement.article.category.displayName}"></td>
                         <td th:text="${movement.type}"></td>
                         <td th:text="${movement.units}"></td>
                         <td th:text="${#numbers.formatCurrency(movement.amount)}"></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(movements)}">
+                        <td colspan="6" class="text-center">No movements found.</td>
                     </tr>
                 </tbody>
             </table>
@@ -42,6 +57,9 @@
             margin: 0 auto;
             padding: 20px;
         }
+        .page-header {
+            margin-bottom: 30px;
+        }
         .actions {
             margin-bottom: 20px;
         }
@@ -51,17 +69,20 @@
         }
         .table th, .table td {
             padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
+            vertical-align: middle;
         }
         .table th {
-            background-color: #f8f9fa;
+            background-color: #343a40;
+            color: white;
+        }
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: rgba(0,0,0,.05);
         }
         .table-responsive {
             overflow-x: auto;
         }
         .btn {
-            padding: 5px 10px;
+            padding: 5px 15px;
             margin: 0 5px;
         }
         .btn-secondary {
@@ -70,6 +91,19 @@
         }
         .btn:hover {
             opacity: 0.9;
+        }
+        .alert {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
         }
     </style>
 </body>

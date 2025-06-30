@@ -1,26 +1,20 @@
 package com.chickentest.controller;
 
-import com.chickentest.domain.Article;
 import com.chickentest.domain.User;
-import com.chickentest.exception.FarmException;
 import com.chickentest.service.FarmService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import java.util.List;
-import java.util.logging.Logger;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 @RequestMapping("/dashboard")
 public class DashboardController {
 
     private final FarmService farmService;
-    private static final Logger logger = Logger.getLogger(DashboardController.class.getName());
 
     @Autowired
     public DashboardController(FarmService farmService) {
@@ -28,20 +22,43 @@ public class DashboardController {
     }
 
     @GetMapping
-    public String showDashboard(@AuthenticationPrincipal UserDetails userDetails, Model model) {
+    public String showDashboard(@AuthenticationPrincipal User user, Model model) {
         try {
-            User user = (User) userDetails;
-            List<Article> articles = farmService.loadInventory(user);
-            model.addAttribute("articles", articles);
+            model.addAttribute("articles", farmService.loadInventory(user));
+            model.addAttribute("movements", farmService.getMovements(user));
             model.addAttribute("username", user.getUsername());
             model.addAttribute("user", user);
-            return "dashboard";
-        } catch (FarmException e) {
-            model.addAttribute("error", e.getMessage());
-            return "error";
         } catch (Exception e) {
-            logger.severe("Unexpected error in dashboard: " + e.getMessage());
-            throw new FarmException("An unexpected error occurred", e);
+            model.addAttribute("error", "Error loading dashboard: " + e.getMessage());
         }
+        return "dashboard";
+    }
+
+    @GetMapping("/buy")
+    public String buyArticle(@RequestParam Long id, @RequestParam int quantity, @AuthenticationPrincipal User user, Model model) {
+        try {
+            if (farmService.buy(id, quantity, user)) {
+                model.addAttribute("success", "Purchase successful!");
+            } else {
+                model.addAttribute("error", "Insufficient balance or stock");
+            }
+        } catch (Exception e) {
+            model.addAttribute("error", "Error during purchase: " + e.getMessage());
+        }
+        return "redirect:/dashboard";
+    }
+
+    @GetMapping("/sell")
+    public String sellArticle(@RequestParam Long id, @RequestParam int quantity, @AuthenticationPrincipal User user, Model model) {
+        try {
+            if (farmService.sell(id, quantity, user)) {
+                model.addAttribute("success", "Sale successful!");
+            } else {
+                model.addAttribute("error", "Insufficient stock");
+            }
+        } catch (Exception e) {
+            model.addAttribute("error", "Error during sale: " + e.getMessage());
+        }
+        return "redirect:/dashboard";
     }
 }

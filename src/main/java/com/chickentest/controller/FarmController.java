@@ -82,15 +82,17 @@ public class FarmController {
                             @RequestParam int age,
                             Model model) {
         try {
-            Article article = new Article();
-            article.setName(name);
-            article.setCategory(categoryRepository.findById(category)
-                .orElseThrow(() -> new RuntimeException("Category not found")));
-            article.setUnits(units);
-            article.setPrice(price);
-            article.setAge(age);
+            Article article = Article.builder()
+                .name(name)
+                .category(categoryRepository.findById(category)
+                    .orElseThrow(() -> new RuntimeException("Category not found")))
+                .units(units)
+                .price(price)
+                .age(age)
+                .lastAgedDate(null)
+                .build();
             
-            if (farmService.addArticle(article)) {
+            if (farmService.addArticle(article, user)) {
                 return "redirect:/dashboard/articles?success";
             }
             
@@ -265,9 +267,11 @@ public class FarmController {
 
     @PostMapping("/add")
     @PreAuthorize("isAuthenticated()")
-    public String addArticle(@ModelAttribute Article article, RedirectAttributes redirectAttributes) {
+    public String addArticle(@ModelAttribute Article article, 
+                           @AuthenticationPrincipal User user,
+                           RedirectAttributes redirectAttributes) {
         try {
-            if (!farmService.addArticle(article)) {
+            if (!farmService.addArticle(article, user)) {
                 redirectAttributes.addFlashAttribute("error", "Stock limit exceeded");
             }
             return "redirect:/dashboard";

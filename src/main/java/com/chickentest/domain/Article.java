@@ -3,11 +3,14 @@ package com.chickentest.domain;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import java.util.Date;
-import java.util.List;
+import lombok.Builder;
 
 import javax.persistence.*;
+import java.util.Date;
+import java.util.List;
+import java.time.LocalDate;
 
+@Builder
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -30,6 +33,9 @@ public class Article {
     @Column(nullable = false)
     private int age;
     
+    @Column(nullable = true)
+    private LocalDate lastAgedDate;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;

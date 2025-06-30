@@ -1,0 +1,25 @@
+# Ignore build output
+/target/
+
+# IDE files
+/.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Spring Boot application properties
+application.properties
+application.yml
+**/application.properties
+**/application.yml
+
+# Other common ignores
+*.class
+*.jar
+*.war
+*.ear
