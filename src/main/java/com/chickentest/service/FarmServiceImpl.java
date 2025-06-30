@@ -3,6 +3,7 @@ package com.chickentest.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.time.LocalDate;
+import com.chickentest.config.Constants;
 
 import com.chickentest.domain.Article;
 import com.chickentest.domain.Category;
@@ -194,17 +195,32 @@ public class FarmServiceImpl implements FarmService {
             if (egg.getLastAgedDate() == null || egg.getLastAgedDate().isBefore(today)) {
                 egg.setAge(egg.getAge() + 1);
                 egg.setLastAgedDate(today);
-                if (egg.getAge() < 60) {
+                if (egg.getAge() < Constants.EGG_HATCH_DAYS) {
                     articleRepository.save(egg);
                 } else {
-                    articleRepository.delete(egg);
+                    int hatchedUnits = egg.getUnits();
+                    egg.setUnits(0);
+                    egg.setAge(0);
+                    articleRepository.save(egg);
+
                     Article chicken = Article.builder()
                         .category(chickensCategory)
+                        .name(egg.getName())
                         .age(0)
-                        .units(1)
+                        .units(hatchedUnits)
                         .price(egg.getPrice())
                         .build();
                     articleRepository.save(chicken);
+
+                    Movement movement = Movement.builder()
+                        .article(chicken)
+                        .date(new Date())
+                        .type(MovementType.PRODUCTION)
+                        .units(hatchedUnits)
+                        .amount(chicken.getPrice() * hatchedUnits)
+                        .username("system")
+                        .build();
+                    movementRepository.save(movement);
                 }
             }
         }

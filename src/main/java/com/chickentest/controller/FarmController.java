@@ -265,24 +265,6 @@ public class FarmController {
         }
     }
 
-    @PostMapping("/add")
-    @PreAuthorize("isAuthenticated()")
-    public String addArticle(@ModelAttribute Article article, 
-                           @AuthenticationPrincipal User user,
-                           RedirectAttributes redirectAttributes) {
-        try {
-            if (!farmService.addArticle(article, user)) {
-                redirectAttributes.addFlashAttribute("error", "Stock limit exceeded");
-            }
-            return "redirect:/dashboard";
-        } catch (FarmException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/dashboard";
-        } catch (Exception e) {
-            logger.severe("Unexpected error in addArticle: " + e.getMessage());
-            throw new FarmException("An unexpected error occurred while adding article", e);
-        }
-    }
 
     @GetMapping("/edit/{id}")
     public String editArticle(@PathVariable Long id, Model model) {

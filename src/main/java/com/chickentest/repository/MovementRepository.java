@@ -14,7 +14,7 @@ public interface MovementRepository extends JpaRepository<Movement, Long> {
     @Query("SELECT COUNT(*) FROM Movement m WHERE m.type = :type")
     Long countProducedBatches(@Param("type") MovementType type);
 
-    @Query("SELECT SUM(a.price * m.amount) FROM Movement m JOIN m.article a WHERE m.type = :type")
+    @Query("SELECT SUM(m.amount) FROM Movement m WHERE m.type = :type")
     Double calculateTotalSales(@Param("type") MovementType type);
 
     List<Movement> findByUsername(String username);

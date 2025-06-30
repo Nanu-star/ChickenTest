@@ -1,6 +1,8 @@
 package com.chickentest.domain;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 import lombok.NoArgsConstructor;
 import javax.persistence.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -10,7 +12,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import java.util.Collection;
 import java.util.Collections;
 
-@Data
+@Getter
+@Setter
+@ToString(exclude = "password")
 @Entity
 @Table(name = "users")
 @NoArgsConstructor
