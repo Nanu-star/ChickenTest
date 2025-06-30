@@ -44,7 +44,8 @@ public class AuthController {
     public String registerUser(@RequestParam String username, @RequestParam String password, Model model) {
         if (userRepository.findByUsername(username).isPresent()) {
             model.addAttribute("error", "Username already exists");
-            return "login";
+            return "register"; // Show register form again with error
+            // Consider switching to @ModelAttribute User user for better binding
         }
 
         User user = new User();

@@ -13,6 +13,7 @@ CREATE TABLE users (
     username VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     balance DECIMAL(10,2) NOT NULL,
+    role VARCHAR(32) NOT NULL DEFAULT 'USER',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -24,12 +25,15 @@ CREATE TABLE articles (
     name VARCHAR(255) NOT NULL,
     price DECIMAL(10,2) NOT NULL,
     age INT NOT NULL DEFAULT 0,
+    last_aged_date DATE NULL,
     production VARCHAR(255),
     display_price VARCHAR(255),
-    category_id BIGINT,
+    category_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES categories(id)
+    FOREIGN KEY (category_id) REFERENCES categories(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- Create movement_types table for enum values
