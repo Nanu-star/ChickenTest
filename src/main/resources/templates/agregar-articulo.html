@@ -13,7 +13,7 @@
     
     <div class="container mt-4">
         <h2>Agregar Artículo</h2>
-        <form th:action="@{/add}" method="post" th:object="${articulo}">
+        <form th:action="@{/dashboard/articles/add}" method="post" th:object="${articulo}">
             <div class="form-group">
                 <label for="name">Nombre</label>
                 <input type="text" class="form-control" id="name" th:field="*{name}" required>
