@@ -41,8 +41,3 @@ mvn spring-boot:run
 ```
 
 Esto compilará el proyecto y levantará el servidor embebido de Spring Boot.
-
-### Actualización de la base de datos
-Si cuentas con una base de datos existente creada antes de esta versión,
-ejecuta la migración de Flyway `V1_0_2__add_article_fields.sql` para añadir las
-columnas `age`, `production` y `display_price` a la tabla `articles`.
