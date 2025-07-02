@@ -27,6 +27,7 @@ CREATE TABLE articles (
     age INT NOT NULL DEFAULT 0,
     last_aged_date DATE NULL,
     production VARCHAR(255),
+    creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     display_price VARCHAR(255),
     category_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
@@ -46,12 +47,25 @@ CREATE TABLE movement_types (
 CREATE TABLE movements (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     article_id BIGINT NOT NULL,
+    name VARCHAR(255) NOT NULL,
     date TIMESTAMP NOT NULL,
     type VARCHAR(255) NOT NULL,
+    units INTEGER NOT NULL,
+    amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    username VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (article_id) REFERENCES articles(id),
     FOREIGN KEY (type) REFERENCES movement_types(name)
+);
+CREATE TABLE farm_config (
+    id              SERIAL PRIMARY KEY,
+    config_key      VARCHAR(50) UNIQUE NOT NULL, -- Nombre técnico del parámetro (ej: 'incubation_days')
+    value           VARCHAR(100) NOT NULL,       -- Valor en texto (puede ser casteado a int/double/etc)
+    description     VARCHAR(200),                -- Explicación humana para admins
+    type            VARCHAR(20) DEFAULT 'STRING',-- Tipo: INT, DOUBLE, STRING, BOOL, DATE...
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by      VARCHAR(50)                  -- Último usuario que lo modificó
 );
 
 

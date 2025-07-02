@@ -1,9 +1,9 @@
 package com.chickentest.domain;
 
 public enum MovementType {
-    PURCHASE("COMPRA"),
-    SALE("VENTA"),
-    PRODUCTION("PRODUCCION");
+    PURCHASE("purchase"),
+    SALE("sale"),
+    SYSTEM("system");
 
     private final String description;
 

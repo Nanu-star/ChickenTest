@@ -33,6 +33,7 @@ public class DashboardController {
             model.addAttribute("movements", farmService.getMovements(user));
             model.addAttribute("username", user.getUsername());
             model.addAttribute("user", user);
+            model.addAttribute("balance", user.getBalance());
         } catch (Exception e) {
             model.addAttribute("error", "Error loading dashboard: " + e.getMessage());
         }

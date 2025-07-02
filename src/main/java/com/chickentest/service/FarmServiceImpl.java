@@ -269,7 +269,7 @@ public class FarmServiceImpl implements FarmService {
         // For PURCHASE: increase stock (add units). For SALE: decrease stock (subtract units)
         int updatedUnits = type == MovementType.PURCHASE ? article.getUnits() + quantity : article.getUnits() - quantity;
 
-
+/*
         if (type == MovementType.PURCHASE) {
             if (user.getBalance() < transactionAmount) {
                 throw new InsufficientBalanceException("Insufficient balance. Required: " + transactionAmount + ", Available: " + user.getBalance());
@@ -278,7 +278,7 @@ public class FarmServiceImpl implements FarmService {
         } else if (type == MovementType.SALE) {
             user.setBalance(user.getBalance() + transactionAmount);
         }
-
+*/
         article.setUnits(updatedUnits); // Set units after potential exceptions for balance
 
         Movement movement = Movement.createMovement(article, quantity, transactionAmount, user.getUsername());
