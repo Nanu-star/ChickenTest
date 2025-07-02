@@ -1,7 +1,7 @@
 package com.chickentest.domain;
 
 public enum MovementType {
-    PURCHASE("purchase"),
+    BUY("buy"),
     SALE("sale"),
     SYSTEM("system");
 

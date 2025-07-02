@@ -4,7 +4,7 @@ INSERT INTO categories (id, name, display_name) VALUES
 (2, 'CHICKEN', 'Chickens');
 -- Insert movement types
 INSERT INTO movement_types (name, description) VALUES
-('PURCHASE', 'purchase'),
+('BUY', 'buy'),
 ('SALE', 'sale'),
 ('SYSTEM', 'system');
 INSERT INTO farm_config (config_key, "value", description, type)

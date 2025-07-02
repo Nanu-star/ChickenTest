@@ -45,7 +45,7 @@ public class Movement {
                 .amount(amount)
                 .username(username)
                 .date(LocalDateTime.now())
-                .type(MovementType.PURCHASE)
+                .type(MovementType.BUY)
                 .build();
     }
 

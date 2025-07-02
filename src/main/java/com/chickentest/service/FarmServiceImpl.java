@@ -106,7 +106,7 @@ public class FarmServiceImpl implements FarmService {
             return false;
         }
 
-        performTransaction(article, quantity, amount, MovementType.PURCHASE, user);
+        performTransaction(article, quantity, amount, MovementType.BUY, user);
         return true;
     }
 
@@ -158,7 +158,7 @@ public class FarmServiceImpl implements FarmService {
         double cost = article.getPrice() * article.getUnits();
 
         // Perform the transaction, which now handles balance, article persistence, and movement creation
-        performTransaction(article, article.getUnits(), cost, MovementType.PURCHASE, user);
+        performTransaction(article, article.getUnits(), cost, MovementType.BUY, user);
 
         // The article is saved within performTransaction, so no need to save it here again
         // Balance is handled in performTransaction
@@ -191,7 +191,7 @@ public class FarmServiceImpl implements FarmService {
             .date(LocalDateTime.now().toString())
             .totalEggs(articleRepository.findTotalUnitsByCategory(eggsCategory))
             .totalChickens(articleRepository.findTotalUnitsByCategory(chickensCategory))
-            .producedBatches(movementRepository.countProducedBatches(MovementType.PRODUCTION).intValue())
+            .producedBatches(movementRepository.countProducedBatches(MovementType.SYSTEM).intValue())
             .totalSales(movementRepository.calculateTotalSales(MovementType.SALE))
             .build();
     }
@@ -236,7 +236,7 @@ public class FarmServiceImpl implements FarmService {
                     Movement movement = Movement.builder()
                         .article(chicken)
                         .date(LocalDateTime.now())
-                        .type(MovementType.PRODUCTION)
+                        .type(MovementType.SYSTEM)
                         .units(hatchedUnits)
                         .amount(chicken.getPrice() * hatchedUnits)
                         .username("system")
@@ -267,7 +267,7 @@ public class FarmServiceImpl implements FarmService {
 
     private void performTransaction(Article article, int quantity, double transactionAmount, MovementType type, User user) {
         // For PURCHASE: increase stock (add units). For SALE: decrease stock (subtract units)
-        int updatedUnits = type == MovementType.PURCHASE ? article.getUnits() + quantity : article.getUnits() - quantity;
+        int updatedUnits = type == MovementType.BUY ? article.getUnits() + quantity : article.getUnits() - quantity;
 
 /*
         if (type == MovementType.PURCHASE) {
