@@ -1,12 +1,26 @@
 package com.chickentest.domain;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import javax.persistence.*;
-
+import java.time.LocalDateTime;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 @Entity
 @Table(name = "movements")
 @Data
@@ -35,39 +49,39 @@ public class Movement {
     @Column(nullable = false)
     private double amount;
     
-    @Column(nullable = false)
-    private String username;
+    @ManyToOne
+    private User user;
 
-    public static Movement createMovement(Article article, int units, double amount, String username) {
+    public static Movement createMovement(Article article, int units, double amount, User user) {
         return Movement.builder()
                 .article(article)
                 .units(units)
                 .amount(amount)
-                .username(username)
+                .user(user)
                 .date(LocalDateTime.now())
                 .type(MovementType.BUY)
                 .build();
     }
 
-    public static Movement createMovement(Article article, LocalDateTime date, MovementType type, int units, double amount, String username) {
+    public static Movement createMovement(Article article, LocalDateTime date, MovementType type, int units, double amount, User user) {
         return Movement.builder()
                 .article(article)
                 .date(date)
                 .type(type)
                 .units(units)
                 .amount(amount)
-                .username(username)
+                .user(user)
                 .build();
     }
 
-    public static Movement createMovement(Article article, LocalDateTime date, String type, int units, double amount, String username) {
+    public static Movement createMovement(Article article, LocalDateTime date, String type, int units, double amount, User user) {
         return Movement.builder()
                 .article(article)
                 .date(date)
                 .type(MovementType.fromDescription(type))
                 .units(units)
                 .amount(amount)
-                .username(username)
+                .user(user)
                 .build();
     }
 
@@ -103,11 +117,11 @@ public class Movement {
         this.amount = amount;
     }
 
-    public String getUsername() {
-        return username;
+    public User getUser() {
+        return user;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setUser(User user) {
+        this.user = user;
     }
 }

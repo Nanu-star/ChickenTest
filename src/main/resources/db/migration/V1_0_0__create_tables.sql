@@ -47,15 +47,16 @@ CREATE TABLE movement_types (
 CREATE TABLE movements (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     article_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
     name VARCHAR(255) NOT NULL,
     date TIMESTAMP NOT NULL,
     type VARCHAR(255) NOT NULL,
     units INTEGER NOT NULL,
     amount DECIMAL(10,2) NOT NULL DEFAULT 0,
-    username VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (article_id) REFERENCES articles(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (type) REFERENCES movement_types(name)
 );
 CREATE TABLE farm_config (

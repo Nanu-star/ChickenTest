@@ -16,6 +16,8 @@ public interface FarmService {
     @Transactional(readOnly = true)
     List<Movement> getMovements(User user);
 
+    String generateAIReport(List<Movement> movements, User user);
+
     @Transactional
     boolean buy(Long articleId, int quantity, User user);
 

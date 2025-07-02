@@ -69,70 +69,22 @@ public class AiService {
         }
     }
     
-
-    public ResponseEntity<String> generateAIReport(List<Movement> movements, User user) {
-        int totalChickens = articleRepository.findTotalUnitsByCategory(chickensCategory);
-        int eggsProducedToday = 0;
-        int eggsSoldToday = 0;
-        int currentEggStock = articleRepository.findTotalUnitsByCategory(eggsCategory);
-        
-        // Assuming movements, user are not null and have necessary getters
-        // This is just a simplified version of your stream logic for the example
-        if (movements != null) {
-            eggsProducedToday = movements.stream()
-        .filter(m -> m.getType() == MovementType.SYSTEM) // Assuming MovementType enum exists
-        .filter(m -> m.getArticle().getCategory().getName().equalsIgnoreCase("EGG"))
-        .filter(m -> isToday(m.getDate()))
-        .mapToInt(Movement::getUnits)
-        .sum();
-            eggsSoldToday = movements.stream()
-        .filter(m -> m.getType() == MovementType.SALE) // Assuming MovementType enum exists
-        .filter(m -> m.getArticle().getCategory().getName().equalsIgnoreCase("EGG"))
-        .filter(m -> isToday(m.getDate()))
-        .mapToInt(Movement::getUnits)
-        .sum();
-        }
-        double userBalance = 0.0;
-        String userRole = "USER";
-        if (user != null) {
-             userBalance = user.getBalance(); // Assuming getBalance exists
-             userRole = user.getRole();     // Assuming getRole exists
-        }
-
-
-        String prompt = String.format(
-            "Here is my farm data:\n" +
-            "- Current chicken stock: %d\n" +
-            "- Current egg stock: %d\n" +
-            "- Eggs produced today: %d\n" +
-            "- Eggs sold today: %d\n" +
-            "- User balance: %.2f\n" +
-            "- User role: %s\n" +
-            "Generate a brief report, highlighting strengths and weaknesses, possible improvements, and important alerts.",
-            totalChickens,
-            currentEggStock,
-            eggsProducedToday,
-            eggsSoldToday,
-            userBalance,
-            userRole
-        );
-
+    public String generateReport(String prompt) {
         try {
             String aiReport = openAiClient.generateReport(prompt);
             log.info("Successfully generated AI report.");
-            return ResponseEntity.ok(aiReport);
-        }  catch (RuntimeException e) {
+            return aiReport;
+        } catch (RuntimeException e) {
             log.error("Error during AI report generation via OpenAiClient: {}", e.getMessage(), e);
-            
+
             if (e.getMessage() != null && e.getMessage().contains("AI service is currently unavailable")) {
-                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getMessage());
+                return "AI service is currently unavailable";
             } else if (e.getMessage() != null && e.getMessage().contains("Error parsing AI model's response")) {
-                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to parse response from AI Model.");
+                return "Failed to parse response from AI Model.";
             } else if (e.getMessage() != null && (e.getMessage().startsWith("AI model error:") || e.getMessage().startsWith("Error from AI service:"))) {
-                return ResponseEntity.status(HttpStatus.FAILED_DEPENDENCY).body(e.getMessage());
+                return e.getMessage();
             }
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                 .body("An error occurred while generating the AI report: " + e.getMessage());
+            return "An error occurred while generating the AI report: " + e.getMessage();
         }
     }
     

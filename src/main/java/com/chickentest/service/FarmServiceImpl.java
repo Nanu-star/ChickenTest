@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 // import java.util.Date; // No longer needed
 import java.util.List;
 import jakarta.annotation.PostConstruct;
@@ -86,20 +87,15 @@ public class FarmServiceImpl implements FarmService {
     @Override
     @Transactional(readOnly = true)
     public List<Movement> getMovements(User user) {
-        List<Movement> movements = movementRepository.findByUsername(user.getUsername());
-        aiService.generateAIReport(movements, user);
-        return movements;
+        return movementRepository.findAllByUser(user);
     }
 
-    
-
-    
     @Override
     @Transactional
     public boolean buy(Long articleId, int quantity, User user) {
         validatePositiveQuantity(quantity);
         Article article = articleRepository.findById(articleId)
-            .orElseThrow(() -> new FarmException("Article not found with id: " + articleId));
+                .orElseThrow(() -> new FarmException("Article not found with id: " + articleId));
         double amount = article.getPrice() * quantity;
 
         if (!checkStockLimit(article, quantity)) {
@@ -115,10 +111,11 @@ public class FarmServiceImpl implements FarmService {
     public boolean sell(Long articleId, int quantity, User user) {
         validatePositiveQuantity(quantity);
         Article article = articleRepository.findById(articleId)
-            .orElseThrow(() -> new InsufficientStockException("Article not found with ID: " + articleId));
+                .orElseThrow(() -> new InsufficientStockException("Article not found with ID: " + articleId));
 
         if (article.getUnits() < quantity) {
-            throw new InsufficientStockException("Insufficient stock. Available: " + article.getUnits() + ", requested: " + quantity);
+            throw new InsufficientStockException(
+                    "Insufficient stock. Available: " + article.getUnits() + ", requested: " + quantity);
         }
 
         double amount = article.getPrice() * quantity;
@@ -143,10 +140,16 @@ public class FarmServiceImpl implements FarmService {
             throw new FarmException("Stock limit exceeded for this category");
         }
 
-        // Ensure user is set on the article if it's a new one being added to their inventory
-        // This might be redundant if 'article.user' is already set by the controller, but good for safety.
+        // Ensure user is set on the article if it's a new one being added to their
+        // inventory
+        // This might be redundant if 'article.user' is already set by the controller,
+        // but good for safety.
         if (article.getUser() == null) {
             article.setUser(user);
+        }
+        // Defensive: Ensure movements is never null
+        if (article.getMovements() == null) {
+            article.setMovements(new ArrayList<>());
         }
 
         // Set creation date if it's a new article
@@ -154,25 +157,27 @@ public class FarmServiceImpl implements FarmService {
             article.setCreation(LocalDateTime.now());
         }
 
-        // Calculate cost
+        // Save the article to get its ID
+        Article savedArticle = articleRepository.save(article);
+
+        // Now create and save the Movement(s), assigning the saved article
         double cost = article.getPrice() * article.getUnits();
+        Movement movement = Movement.createMovement(savedArticle, article.getUnits(), cost, user);
+        movement.setType(MovementType.BUY);
+        movementRepository.save(movement);
 
-        // Perform the transaction, which now handles balance, article persistence, and movement creation
-        performTransaction(article, article.getUnits(), cost, MovementType.BUY, user);
-
-        // The article is saved within performTransaction, so no need to save it here again
-        // Balance is handled in performTransaction
-        // Movement is created and saved in performTransaction
+        // Optionally, update user's balance here if needed
+        user.setBalance(user.getBalance() - cost);
+        userRepository.save(user);
 
         return true;
     }
-
 
     @Override
     @Transactional
     public Article getArticle(Long id) {
         return articleRepository.findById(id)
-            .orElseThrow(() -> new FarmException(ERROR_PREFIX + "Article not found with ID: " + id));
+                .orElseThrow(() -> new FarmException(ERROR_PREFIX + "Article not found with ID: " + id));
     }
 
     @Override
@@ -188,12 +193,12 @@ public class FarmServiceImpl implements FarmService {
     @Override
     public Report generateReport() {
         return Report.builder()
-            .date(LocalDateTime.now().toString())
-            .totalEggs(articleRepository.findTotalUnitsByCategory(eggsCategory))
-            .totalChickens(articleRepository.findTotalUnitsByCategory(chickensCategory))
-            .producedBatches(movementRepository.countProducedBatches(MovementType.SYSTEM).intValue())
-            .totalSales(movementRepository.calculateTotalSales(MovementType.SALE))
-            .build();
+                .date(LocalDateTime.now().toString())
+                .totalEggs(articleRepository.findTotalUnitsByCategory(eggsCategory))
+                .totalChickens(articleRepository.findTotalUnitsByCategory(chickensCategory))
+                .producedBatches(movementRepository.countProducedBatches(MovementType.SYSTEM).intValue())
+                .totalSales(movementRepository.calculateTotalSales(MovementType.SALE))
+                .build();
     }
 
     @Override
@@ -224,23 +229,23 @@ public class FarmServiceImpl implements FarmService {
                     articleRepository.save(egg);
 
                     Article chicken = Article.builder()
-                        .category(chickensCategory)
-                        .name(egg.getName())
-                        .age(0)
-                        .units(hatchedUnits)
-                        .price(egg.getPrice())
-                        .creation(LocalDateTime.now()) // Added creation timestamp for new chicken
-                        .build();
+                            .category(chickensCategory)
+                            .name(egg.getName())
+                            .age(0)
+                            .units(hatchedUnits)
+                            .price(egg.getPrice())
+                            .creation(LocalDateTime.now()) // Added creation timestamp for new chicken
+                            .build();
                     articleRepository.save(chicken);
 
                     Movement movement = Movement.builder()
-                        .article(chicken)
-                        .date(LocalDateTime.now())
-                        .type(MovementType.SYSTEM)
-                        .units(hatchedUnits)
-                        .amount(chicken.getPrice() * hatchedUnits)
-                        .username("system")
-                        .build();
+                            .article(chicken)
+                            .date(LocalDateTime.now())
+                            .type(MovementType.SYSTEM)
+                            .units(hatchedUnits)
+                            .amount(chicken.getPrice() * hatchedUnits)
+                            .user(User.builder().username("system").build())
+                            .build();
                     movementRepository.save(movement);
                 }
             }
@@ -265,46 +270,135 @@ public class FarmServiceImpl implements FarmService {
         return true;
     }
 
-    private void performTransaction(Article article, int quantity, double transactionAmount, MovementType type, User user) {
-        // For PURCHASE: increase stock (add units). For SALE: decrease stock (subtract units)
+    private void performTransaction(Article article, int quantity, double transactionAmount, MovementType type,
+            User user) {
+        // For PURCHASE: increase stock (add units). For SALE: decrease stock (subtract
+        // units)
         int updatedUnits = type == MovementType.BUY ? article.getUnits() + quantity : article.getUnits() - quantity;
 
-/*
-        if (type == MovementType.PURCHASE) {
-            if (user.getBalance() < transactionAmount) {
-                throw new InsufficientBalanceException("Insufficient balance. Required: " + transactionAmount + ", Available: " + user.getBalance());
-            }
-            user.setBalance(user.getBalance() - transactionAmount);
-        } else if (type == MovementType.SALE) {
-            user.setBalance(user.getBalance() + transactionAmount);
-        }
-*/
+        /*
+         * if (type == MovementType.PURCHASE) {
+         * if (user.getBalance() < transactionAmount) {
+         * throw new InsufficientBalanceException("Insufficient balance. Required: " +
+         * transactionAmount + ", Available: " + user.getBalance());
+         * }
+         * user.setBalance(user.getBalance() - transactionAmount);
+         * } else if (type == MovementType.SALE) {
+         * user.setBalance(user.getBalance() + transactionAmount);
+         * }
+         */
         article.setUnits(updatedUnits); // Set units after potential exceptions for balance
 
-        Movement movement = Movement.createMovement(article, quantity, transactionAmount, user.getUsername());
+        Movement movement = Movement.createMovement(article, quantity, transactionAmount, user);
         movement.setType(type); // Ensure type is set correctly on the movement if createMovement defaults it
 
         articleRepository.save(article);
         userRepository.save(user);
         movementRepository.save(movement);
     }
-    
+
     private void validatePositiveQuantity(int quantity) {
         if (quantity <= 0) {
             throw new FarmException("Quantity must be positive");
         }
     }
+
     private void validateArticleCategory(Article article) {
         if (article.getCategory() == null) {
             throw new FarmException("Article category must be specified");
         }
     }
 
-    // Helper to check if a Date is today - No longer used after Movement.date changed to LocalDateTime
-    // private boolean isToday(Date date) {
-    //     if (date == null) return false;
-    //     LocalDate movementDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-    //     return movementDate.equals(LocalDate.now());
-    // }
-}
+    public String getAIReport(List<Movement> movements, User user) {
+        int totalChickens = articleRepository.findTotalUnitsByCategory(chickensCategory);
+        int eggsProducedToday = 0;
+        int eggsSoldToday = 0;
+        int currentEggStock = articleRepository.findTotalUnitsByCategory(eggsCategory);
 
+        if (movements != null) {
+            eggsProducedToday = movements.stream()
+                    .filter(m -> m.getType() == MovementType.SYSTEM)
+                    .filter(m -> m.getArticle().getCategory().getName().equalsIgnoreCase("EGG"))
+                    .filter(m -> isToday(m.getDate()))
+                    .mapToInt(Movement::getUnits)
+                    .sum();
+            eggsSoldToday = movements.stream()
+                    .filter(m -> m.getType() == MovementType.SALE)
+                    .filter(m -> m.getArticle().getCategory().getName().equalsIgnoreCase("EGG"))
+                    .filter(m -> isToday(m.getDate()))
+                    .mapToInt(Movement::getUnits)
+                    .sum();
+        }
+
+        double userBalance = user != null ? user.getBalance() : 0.0;
+        String userRole = user != null ? user.getRole() : "USER";
+
+        String prompt = String.format(
+                "Here is my farm data:\n" +
+                        "- Current chicken stock: %d\n" +
+                        "- Current egg stock: %d\n" +
+                        "- Eggs produced today: %d\n" +
+                        "- Eggs sold today: %d\n" +
+                        "- User balance: %.2f\n" +
+                        "- User role: %s\n" +
+                        "Generate a brief report, highlighting strengths and weaknesses, possible improvements, and important alerts.",
+                totalChickens,
+                currentEggStock,
+                eggsProducedToday,
+                eggsSoldToday,
+                userBalance,
+                userRole);
+
+        return aiService.generateReport(prompt);
+    }
+
+    private boolean isToday(LocalDateTime date) {
+        if (date == null)
+            return false;
+        return date.equals(LocalDateTime.now());
+    }
+
+    @Override
+    public String generateAIReport(List<Movement> movements, User user) {
+        int totalChickens = articleRepository.findTotalUnitsByCategory(chickensCategory);
+        int eggsProducedToday = 0;
+        int eggsSoldToday = 0;
+        int currentEggStock = articleRepository.findTotalUnitsByCategory(eggsCategory);
+
+        if (movements != null) {
+            eggsProducedToday = movements.stream()
+                    .filter(m -> m.getType() == MovementType.SYSTEM)
+                    .filter(m -> m.getArticle().getCategory().getName().equalsIgnoreCase("EGG"))
+                    .filter(m -> isToday(m.getDate()))
+                    .mapToInt(Movement::getUnits)
+                    .sum();
+            eggsSoldToday = movements.stream()
+                    .filter(m -> m.getType() == MovementType.SALE)
+                    .filter(m -> m.getArticle().getCategory().getName().equalsIgnoreCase("EGG"))
+                    .filter(m -> isToday(m.getDate()))
+                    .mapToInt(Movement::getUnits)
+                    .sum();
+        }
+
+        double userBalance = user != null ? user.getBalance() : 0.0;
+        String userRole = user != null ? user.getRole() : "USER";
+
+        String prompt = String.format(
+                "Here is my farm data:\n" +
+                        "- Current chicken stock: %d\n" +
+                        "- Current egg stock: %d\n" +
+                        "- Eggs produced today: %d\n" +
+                        "- Eggs sold today: %d\n" +
+                        "- User balance: %.2f\n" +
+                        "- User role: %s\n" +
+                        "Generate a brief report, highlighting strengths and weaknesses, possible improvements, and important alerts.",
+                totalChickens,
+                currentEggStock,
+                eggsProducedToday,
+                eggsSoldToday,
+                userBalance,
+                userRole);
+
+        return aiService.generateReport(prompt);
+    }
+}
