@@ -1,6 +1,6 @@
 package com.chickentest.domain;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,7 +23,7 @@ public class Movement {
     private Article article;
     
     @Column(nullable = false)
-    private Date date;
+    private LocalDateTime date;
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -44,12 +44,12 @@ public class Movement {
                 .units(units)
                 .amount(amount)
                 .username(username)
-                .date(new Date())
+                .date(LocalDateTime.now())
                 .type(MovementType.PURCHASE)
                 .build();
     }
 
-    public static Movement createMovement(Article article, Date date, MovementType type, int units, double amount, String username) {
+    public static Movement createMovement(Article article, LocalDateTime date, MovementType type, int units, double amount, String username) {
         return Movement.builder()
                 .article(article)
                 .date(date)
@@ -60,7 +60,7 @@ public class Movement {
                 .build();
     }
 
-    public static Movement createMovement(Article article, Date date, String type, int units, double amount, String username) {
+    public static Movement createMovement(Article article, LocalDateTime date, String type, int units, double amount, String username) {
         return Movement.builder()
                 .article(article)
                 .date(date)
@@ -79,11 +79,11 @@ public class Movement {
         this.article = article;
     }
 
-    public Date getDate() {
+    public LocalDateTime getDate() {
         return date;
     }
 
-    public void setDate(Date date) {
+    public void setDate(LocalDateTime date) {
         this.date = date;
     }
 

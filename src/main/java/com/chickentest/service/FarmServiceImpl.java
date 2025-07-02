@@ -13,6 +13,7 @@ import com.chickentest.domain.Report;
 import com.chickentest.domain.User;
 import com.chickentest.exception.FarmException;
 import com.chickentest.exception.InsufficientStockException;
+import com.chickentest.exception.InsufficientBalanceException; // Added
 import com.chickentest.repository.ArticleRepository;
 import com.chickentest.repository.CategoryRepository;
 import com.chickentest.repository.MovementRepository;
@@ -30,10 +31,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Date;
+// import java.util.Date; // No longer needed
 import java.util.List;
 import javax.annotation.PostConstruct;
-import java.time.ZoneId;
+// import java.time.ZoneId; // No longer needed
+import java.time.LocalDateTime; // Added for LocalDateTime.now()
 
 @Service
 public class FarmServiceImpl implements FarmService {
@@ -140,26 +142,27 @@ public class FarmServiceImpl implements FarmService {
         if (!checkStockLimit(article, article.getUnits())) {
             throw new FarmException("Stock limit exceeded for this category");
         }
-        // --- Balance validation temporarily commented out for testing ---
-    // if (user.getBalance() < article.getPrice() * article.getUnits()) {
-    //     throw new FarmException("Insufficient balance to purchase this article");
-    // }
 
-    user.setBalance(user.getBalance() - (article.getPrice() * article.getUnits()));
-    userRepository.save(user);
-    // --- End of testing comment-out ---
-        articleRepository.save(article);
+        // Ensure user is set on the article if it's a new one being added to their inventory
+        // This might be redundant if 'article.user' is already set by the controller, but good for safety.
+        if (article.getUser() == null) {
+            article.setUser(user);
+        }
 
-        logger.debug("Creating movement for article addition");
-        Movement movement = Movement.builder()
-            .article(article)
-            .date(new Date())
-            .type(MovementType.PURCHASE)
-            .units(article.getUnits())
-            .amount(article.getPrice() * article.getUnits())
-            .username(user.getUsername())
-            .build();
-        movementRepository.save(movement);
+        // Set creation date if it's a new article
+        if (article.getCreation() == null) {
+            article.setCreation(LocalDateTime.now());
+        }
+
+        // Calculate cost
+        double cost = article.getPrice() * article.getUnits();
+
+        // Perform the transaction, which now handles balance, article persistence, and movement creation
+        performTransaction(article, article.getUnits(), cost, MovementType.PURCHASE, user);
+
+        // The article is saved within performTransaction, so no need to save it here again
+        // Balance is handled in performTransaction
+        // Movement is created and saved in performTransaction
 
         return true;
     }
@@ -185,7 +188,7 @@ public class FarmServiceImpl implements FarmService {
     @Override
     public Report generateReport() {
         return Report.builder()
-            .date(new Date().toString())
+            .date(LocalDateTime.now().toString())
             .totalEggs(articleRepository.findTotalUnitsByCategory(eggsCategory))
             .totalChickens(articleRepository.findTotalUnitsByCategory(chickensCategory))
             .producedBatches(movementRepository.countProducedBatches(MovementType.PRODUCTION).intValue())
@@ -226,12 +229,13 @@ public class FarmServiceImpl implements FarmService {
                         .age(0)
                         .units(hatchedUnits)
                         .price(egg.getPrice())
+                        .creation(LocalDateTime.now()) // Added creation timestamp for new chicken
                         .build();
                     articleRepository.save(chicken);
 
                     Movement movement = Movement.builder()
                         .article(chicken)
-                        .date(new Date())
+                        .date(LocalDateTime.now())
                         .type(MovementType.PRODUCTION)
                         .units(hatchedUnits)
                         .amount(chicken.getPrice() * hatchedUnits)
@@ -261,21 +265,24 @@ public class FarmServiceImpl implements FarmService {
         return true;
     }
 
-    private void performTransaction(Article article, int quantity, double amount, MovementType type, User user) {
+    private void performTransaction(Article article, int quantity, double transactionAmount, MovementType type, User user) {
         // For PURCHASE: increase stock (add units). For SALE: decrease stock (subtract units)
         int updatedUnits = type == MovementType.PURCHASE ? article.getUnits() + quantity : article.getUnits() - quantity;
-        article.setUnits(updatedUnits);
 
-        // For SALE: add to user balance the amount * price
-        // For PURCHASE: user balance is not affected (see requirements)
-        if (type == MovementType.SALE) {
-            double updatedBalance = user.getBalance() + amount;
-            user.setBalance(updatedBalance);
+
+        if (type == MovementType.PURCHASE) {
+            if (user.getBalance() < transactionAmount) {
+                throw new InsufficientBalanceException("Insufficient balance. Required: " + transactionAmount + ", Available: " + user.getBalance());
+            }
+            user.setBalance(user.getBalance() - transactionAmount);
+        } else if (type == MovementType.SALE) {
+            user.setBalance(user.getBalance() + transactionAmount);
         }
-        // --- End of balance deduction bypass ---
 
-        Movement movement = Movement.createMovement(article, quantity, amount, user.getUsername());
-        movement.setType(type);
+        article.setUnits(updatedUnits); // Set units after potential exceptions for balance
+
+        Movement movement = Movement.createMovement(article, quantity, transactionAmount, user.getUsername());
+        movement.setType(type); // Ensure type is set correctly on the movement if createMovement defaults it
 
         articleRepository.save(article);
         userRepository.save(user);
@@ -293,11 +300,11 @@ public class FarmServiceImpl implements FarmService {
         }
     }
 
-    // Helper to check if a Date is today
-    private boolean isToday(Date date) {
-        if (date == null) return false;
-        LocalDate movementDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-        return movementDate.equals(LocalDate.now());
-    }
+    // Helper to check if a Date is today - No longer used after Movement.date changed to LocalDateTime
+    // private boolean isToday(Date date) {
+    //     if (date == null) return false;
+    //     LocalDate movementDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    //     return movementDate.equals(LocalDate.now());
+    // }
 }
 

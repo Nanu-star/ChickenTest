@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Date;
+import java.time.LocalDateTime; // Changed from java.util.Date
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -48,7 +48,7 @@ public class FarmServiceSchedulingTest {
         egg.setPrice(1.0);
         egg.setAge(Constants.EGG_HATCH_DAYS - 1);
         egg.setProduction("test");
-        egg.setCreation(new Date());
+        egg.setCreation(LocalDateTime.now()); // Changed from new Date()
         articleRepository.save(egg);
     }
 

@@ -6,6 +6,7 @@ import com.chickentest.domain.Movement;
 import com.chickentest.domain.Report;
 import com.chickentest.domain.User;
 import com.chickentest.exception.FarmException;
+import com.chickentest.exception.InsufficientBalanceException; // Added
 import com.chickentest.repository.UserRepository;
 import com.chickentest.repository.CategoryRepository;
 import com.chickentest.service.FarmService;
@@ -20,7 +21,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Controller
 public class FarmController {
@@ -29,7 +32,7 @@ public class FarmController {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final BCryptPasswordEncoder passwordEncoder;
-    private static final Logger logger = Logger.getLogger(FarmController.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(FarmController.class);
 
     @Autowired
     public FarmController(FarmService farmService,
@@ -53,7 +56,7 @@ public class FarmController {
             model.addAttribute("error", e.getMessage());
             return "error";
         } catch (Exception e) {
-            logger.severe("Unexpected error in articles: " + e.getMessage());
+            logger.error("Unexpected error in articles: " + e.getMessage());
             throw new FarmException("An unexpected error occurred while loading articles", e);
         }
     }
@@ -67,7 +70,7 @@ public class FarmController {
             model.addAttribute("categories", categories);
             return "add-article";
         } catch (Exception e) {
-            logger.severe("Error loading categories: " + e.getMessage());
+            logger.error("Error loading categories: " + e.getMessage());
             model.addAttribute("error", "Failed to load categories");
             return "error";
         }
@@ -97,9 +100,22 @@ public String addArticle(@AuthenticationPrincipal User user,
         model.addAttribute("error", "Failed to add article. Please check the values and try again.");
         model.addAttribute("categories", farmService.getCategories());
         return "add-article";
+    } catch (InsufficientBalanceException ibe) {
+        logger.warn("Failed to add article due to insufficient balance for user {}: {}", user.getUsername(), ibe.getMessage());
+        model.addAttribute("error", ibe.getMessage());
+        model.addAttribute("article", article); // Keep the user's input
+        model.addAttribute("categories", farmService.getCategories());
+        return "add-article";
+    } catch (FarmException fe) {
+        logger.warn("FarmException while adding article for user {}: {}", user.getUsername(), fe.getMessage());
+        model.addAttribute("error", fe.getMessage());
+        model.addAttribute("article", article); // Keep the user's input
+        model.addAttribute("categories", farmService.getCategories());
+        return "add-article";
     } catch (Exception e) {
-        logger.severe("Error adding article: " + e.getMessage());
-        model.addAttribute("error", "An error occurred while adding the article");
+        logger.error("Error adding article for user {}: {}", user.getUsername(), e.getMessage(), e);
+        model.addAttribute("error", "An unexpected error occurred while adding the article.");
+        model.addAttribute("article", article); // Keep the user's input
         model.addAttribute("categories", farmService.getCategories());
         return "add-article";
     }
@@ -107,35 +123,50 @@ public String addArticle(@AuthenticationPrincipal User user,
 
     @PostMapping("/dashboard/articles/buy/{id}")
     @PreAuthorize("isAuthenticated()")
-    public String buyArticle(@PathVariable Long id, @RequestParam int quantity, Model model) {
+    public String buyArticle(@PathVariable Long id, @RequestParam int quantity, @AuthenticationPrincipal User user, Model model, RedirectAttributes redirectAttributes) {
         try {
-            User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            if (farmService.buy(id, quantity, user)) {
-                return "redirect:/dashboard/articles?success";
-            }
-            model.addAttribute("error", "Insufficient balance or stock limit exceeded");
-            return "articles";
+            farmService.buy(id, quantity, user);
+            redirectAttributes.addFlashAttribute("successMessage", "Article(s) bought successfully!");
+            return "redirect:/dashboard/articles";
+        } catch (InsufficientBalanceException ibe) {
+            logger.warn("Failed to buy article due to insufficient balance for user {}: {}", user.getUsername(), ibe.getMessage());
+            // For redirect, use FlashAttributes. If staying on the same page (not typical for POST-redirect-GET), use Model.
+            redirectAttributes.addFlashAttribute("errorMessage", ibe.getMessage());
+            return "redirect:/dashboard/articles"; // Or a specific error page/view if preferred
+        } catch (FarmException fe) {
+            logger.warn("FarmException while buying article for user {}: {}", user.getUsername(), fe.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", fe.getMessage());
+            return "redirect:/dashboard/articles";
         } catch (Exception e) {
-            logger.severe("Error buying article: " + e.getMessage());
-            model.addAttribute("error", "An error occurred while buying the article");
-            return "articles";
+            logger.error("Error buying article for user {}: {}", user.getUsername(), e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("errorMessage", "An unexpected error occurred while buying the article.");
+            return "redirect:/dashboard/articles";
         }
     }
 
     @PostMapping("/dashboard/articles/sell/{id}")
     @PreAuthorize("isAuthenticated()")
-    public String sellArticle(@PathVariable Long id, @RequestParam int quantity, Model model) {
+    public String sellArticle(@PathVariable Long id,
+                              @RequestParam int quantity,
+                              @AuthenticationPrincipal User user, // Changed from SecurityContextHolder
+                              Model model,
+                              RedirectAttributes redirectAttributes) { // Added RedirectAttributes
         try {
-            User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            if (farmService.sell(id, quantity, user)) {
-                return "redirect:/dashboard/articles?success";
-            }
-            model.addAttribute("error", "Insufficient units available");
-            return "articles";
+            farmService.sell(id, quantity, user);
+            redirectAttributes.addFlashAttribute("successMessage", "Article(s) sold successfully!"); // Changed to flash message
+            return "redirect:/dashboard/articles"; // Redirect to dashboard
+        } catch (InsufficientStockException ise) {
+            logger.warn("Failed to sell article due to insufficient stock for user {}: {}", user.getUsername(), ise.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", ise.getMessage());
+            return "redirect:/dashboard/articles";
+        } catch (FarmException fe) {
+            logger.warn("FarmException while selling article for user {}: {}", user.getUsername(), fe.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", fe.getMessage());
+            return "redirect:/dashboard/articles";
         } catch (Exception e) {
-            logger.severe("Error selling article: " + e.getMessage());
-            model.addAttribute("error", "An error occurred while selling the article");
-            return "articles";
+            logger.error("Error selling article for user {}: {}", user.getUsername(), e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("errorMessage", "An unexpected error occurred while selling the article.");
+            return "redirect:/dashboard/articles";
         }
     }
 
@@ -150,7 +181,7 @@ public String addArticle(@AuthenticationPrincipal User user,
             model.addAttribute("error", e.getMessage());
             return "error";
         } catch (Exception e) {
-            logger.severe("Unexpected error in movements: " + e.getMessage());
+            logger.error("Unexpected error in movements: " + e.getMessage());
             throw new FarmException("An unexpected error occurred while loading movements", e);
         }
     }
@@ -166,7 +197,7 @@ public String addArticle(@AuthenticationPrincipal User user,
             model.addAttribute("error", e.getMessage());
             return "error";
         } catch (Exception e) {
-            logger.severe("Unexpected error in categories: " + e.getMessage());
+            logger.error("Unexpected error in categories: " + e.getMessage());
             throw new FarmException("An unexpected error occurred while loading categories", e);
         }
     }
@@ -197,7 +228,7 @@ public String addArticle(@AuthenticationPrincipal User user,
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/register";
         } catch (Exception e) {
-            logger.severe("Error registering user: " + e.getMessage());
+            logger.error("Error registering user: " + e.getMessage());
             throw new FarmException("An unexpected error occurred during registration", e);
         }
     }
@@ -219,7 +250,7 @@ public String addArticle(@AuthenticationPrincipal User user,
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/dashboard";
         } catch (Exception e) {
-            logger.severe("Unexpected error in buy: " + e.getMessage());
+            logger.error("Unexpected error in buy: " + e.getMessage());
             throw new FarmException("An unexpected error occurred while buying", e);
         }
     }
@@ -231,16 +262,21 @@ public String addArticle(@AuthenticationPrincipal User user,
                        @AuthenticationPrincipal User user,
                        RedirectAttributes redirectAttributes) {
         try {
-            if (!farmService.sell(articleId, quantity, user)) {
-                redirectAttributes.addFlashAttribute("error", "Not enough items in stock to sell");
-            }
+            farmService.buy(articleId, quantity, user);
+            redirectAttributes.addFlashAttribute("successMessage", "Purchase successful!");
             return "redirect:/dashboard";
-        } catch (FarmException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        } catch (InsufficientBalanceException ibe) {
+            logger.warn("Failed to buy due to insufficient balance for user {}: {}", user.getUsername(), ibe.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", ibe.getMessage());
+            return "redirect:/dashboard";
+        } catch (FarmException fe) {
+            logger.warn("FarmException while buying for user {}: {}", user.getUsername(), fe.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", fe.getMessage());
             return "redirect:/dashboard";
         } catch (Exception e) {
-            logger.severe("Unexpected error in sell: " + e.getMessage());
-            throw new FarmException("An unexpected error occurred while selling", e);
+            logger.error("Unexpected error in buy for user {}: {}", user.getUsername(), e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("errorMessage", "An unexpected error occurred during purchase.");
+            return "redirect:/dashboard";
         }
     }
 
@@ -257,15 +293,17 @@ public String addArticle(@AuthenticationPrincipal User user,
             model.addAttribute("error", e.getMessage());
             return "error";
         } catch (Exception e) {
-            logger.severe("Unexpected error in report: " + e.getMessage());
+            logger.error("Unexpected error in report: " + e.getMessage());
             throw new FarmException("An unexpected error occurred while generating report", e);
         }
     }
 
 
     @GetMapping("/edit/{id}")
+    @PreAuthorize("isAuthenticated()")
     public String editArticle(@PathVariable Long id, Model model) {
         try {
+            // TODO: Add ownership check or admin role check if necessary
             Article article = farmService.getArticle(id);
             model.addAttribute("articulo", article);
             return "modificar-articulo";
@@ -275,8 +313,12 @@ public String addArticle(@AuthenticationPrincipal User user,
     }
 
     @PostMapping("/update")
+    @PreAuthorize("isAuthenticated()")
     public String updateArticle(@ModelAttribute Article article) {
         try {
+            // TODO: Add ownership check or admin role check if necessary
+            // Consider fetching the existing article by article.getId() to verify ownership
+            // before calling farmService.updateArticle(article).
             farmService.updateArticle(article);
             return "redirect:/dashboard";
         } catch (Exception e) {
@@ -295,7 +337,7 @@ public String addArticle(@AuthenticationPrincipal User user,
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/dashboard";
         } catch (Exception e) {
-            logger.severe("Unexpected error in deleteArticle: " + e.getMessage());
+            logger.error("Unexpected error in deleteArticle: " + e.getMessage());
             throw new FarmException("An unexpected error occurred while deleting article", e);
         }
     }

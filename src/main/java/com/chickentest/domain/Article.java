@@ -6,9 +6,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 
 import javax.persistence.*;
-import java.util.Date;
-import java.util.List;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Builder
 @Data
@@ -49,6 +49,8 @@ public class Article {
     
     @OneToMany(mappedBy = "article", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Movement> movements;
-    private Date creation;
+    private LocalDateTime creation;
+
+    @Transient
     private String displayPrice;
 }
