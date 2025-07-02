@@ -61,7 +61,7 @@ CREATE TABLE movements (
 CREATE TABLE farm_config (
     id              SERIAL PRIMARY KEY,
     config_key      VARCHAR(50) UNIQUE NOT NULL, -- Nombre técnico del parámetro (ej: 'incubation_days')
-    value           VARCHAR(100) NOT NULL,       -- Valor en texto (puede ser casteado a int/double/etc)
+    "value"           VARCHAR(100) NOT NULL,       -- Valor en texto (puede ser casteado a int/double/etc)
     description     VARCHAR(200),                -- Explicación humana para admins
     type            VARCHAR(20) DEFAULT 'STRING',-- Tipo: INT, DOUBLE, STRING, BOOL, DATE...
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

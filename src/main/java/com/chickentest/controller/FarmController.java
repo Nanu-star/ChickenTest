@@ -62,6 +62,65 @@ public class FarmController {
         }
     }
 
+    @GetMapping("/farm/buy")
+    @PreAuthorize("isAuthenticated()")
+    public String buyArticle(@RequestParam Long id, @RequestParam int quantity, @AuthenticationPrincipal User user, RedirectAttributes redirectAttributes) {
+        try {
+            if (farmService.buy(id, quantity, user)) {
+                redirectAttributes.addFlashAttribute("success", "Purchase successful!");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "Insufficient balance or stock");
+            }
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Error during purchase: " + e.getMessage());
+        }
+        return "redirect:/dashboard";
+    }
+
+    @GetMapping("/farm/sell")
+    @PreAuthorize("isAuthenticated()")
+    public String sellArticle(@RequestParam Long id, @RequestParam int quantity, @AuthenticationPrincipal User user, RedirectAttributes redirectAttributes) {
+        try {
+            if (farmService.sell(id, quantity, user)) {
+                redirectAttributes.addFlashAttribute("success", "Sale successful!");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "Insufficient stock");
+            }
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Error during sale: " + e.getMessage());
+        }
+        return "redirect:/dashboard";
+    }
+
+    @PostMapping("/farm/update-balance")
+    @PreAuthorize("isAuthenticated()")
+    public String updateBalance(@AuthenticationPrincipal User user,
+                                @RequestParam("newBalance") double newBalance,
+                                RedirectAttributes redirectAttributes) {
+        if (user == null) {
+            redirectAttributes.addFlashAttribute("error", "User not found. Please log in again.");
+            return "redirect:/login";
+        }
+
+        try {
+            if (newBalance < 0) {
+                redirectAttributes.addFlashAttribute("error", "Balance cannot be negative.");
+            } else {
+                User currentUser = userRepository.findById(user.getId()).orElse(null);
+                if (currentUser == null) {
+                    redirectAttributes.addFlashAttribute("error", "User not found in database. Please log in again.");
+                    return "redirect:/login";
+                }
+                currentUser.setBalance(newBalance);
+                userRepository.save(currentUser);
+                redirectAttributes.addFlashAttribute("success", "Balance updated successfully!");
+            }
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Error updating balance: " + e.getMessage());
+        }
+        return "redirect:/dashboard";
+    }
+
     @GetMapping("/dashboard/articles/add")
     @PreAuthorize("isAuthenticated()")
     public String showAddArticleForm(@AuthenticationPrincipal User user, Model model) {

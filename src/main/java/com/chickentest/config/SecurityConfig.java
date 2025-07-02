@@ -12,7 +12,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.chickentest.security.JwtAuthenticationFilter;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -37,19 +40,19 @@ public class SecurityConfig {
         return authProvider;
     }
 
+    @Autowired
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .authorizeRequests()
-                .antMatchers("/auth/register", "/auth/login", "/css/**", "/js/**").permitAll()
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(requests -> requests
+                .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
                 .anyRequest().authenticated()
-            .and()
-            .formLogin()
-                .loginPage("/auth/login").permitAll()
-                .defaultSuccessUrl("/dashboard", true)
-            .and()
-            .logout()
-                .logoutSuccessUrl("/auth/login?logout").permitAll();
+            );
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

@@ -35,7 +35,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Date;
 import java.util.List;
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import java.time.ZoneId;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

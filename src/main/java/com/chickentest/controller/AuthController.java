@@ -2,69 +2,58 @@ package com.chickentest.controller;
 
 import com.chickentest.domain.User;
 import com.chickentest.repository.UserRepository;
+
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
+import com.chickentest.security.JwtUtil;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
-@Controller
-@RequestMapping("/auth")
+@RestController
+@RequestMapping("/api/auth")
 public class AuthController {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final AuthenticationProvider authenticationProvider;
+    private final JwtUtil jwtUtil;
+    private final UserDetailsService userDetailsService;
 
-    public AuthController(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, AuthenticationProvider authenticationProvider) {
+    public AuthController(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, AuthenticationProvider authenticationProvider, JwtUtil jwtUtil, UserDetailsService userDetailsService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationProvider = authenticationProvider;
-    }
-
-    @GetMapping("/login")
-    public String showLoginForm(Model model) {
-        model.addAttribute("user", new User());
-        return "login";
-    }
-
-    @GetMapping("/register")
-    public String showRegisterForm(Model model) {
-        model.addAttribute("user", new User());
-        return "register";
+        this.jwtUtil = jwtUtil;
+        this.userDetailsService = userDetailsService;
     }
 
     @PostMapping("/register")
-    public String registerUser(@RequestParam String username, @RequestParam String password, Model model) {
-        if (userRepository.findByUsername(username).isPresent()) {
-            model.addAttribute("error", "Username already exists");
-            return "register"; // Show register form again with error
-            // Consider switching to @ModelAttribute User user for better binding
+    public ResponseEntity<?> register(@RequestBody User user) {
+        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
+            return ResponseEntity.badRequest().body("Username already exists");
         }
-
-        User user = new User();
-        user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(password));
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setBalance(0.0);
         userRepository.save(user);
-
-        return "redirect:/auth/login?success";
+        return ResponseEntity.ok("User registered successfully");
     }
 
     @PostMapping("/login")
-    public String loginUser(@RequestParam String username, @RequestParam String password, Model model) {
+    public ResponseEntity<?> login(@RequestBody User user) {
         try {
-            authenticationProvider.authenticate(new UsernamePasswordAuthenticationToken(username, password));
-            return "redirect:/dashboard";
+            authenticationProvider.authenticate(new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword()));
+            var userDetails = userDetailsService.loadUserByUsername(user.getUsername());
+            String jwt = jwtUtil.generateToken(userDetails);
+            return ResponseEntity.ok().body(java.util.Map.of("token", jwt));
         } catch (AuthenticationException e) {
-            model.addAttribute("error", "Invalid username or password");
-            return "login";
+            return ResponseEntity.status(401).body("Invalid username or password");
         }
     }
 }

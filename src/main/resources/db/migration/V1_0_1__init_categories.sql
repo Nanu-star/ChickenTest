@@ -7,7 +7,7 @@ INSERT INTO movement_types (name, description) VALUES
 ('PURCHASE', 'purchase'),
 ('SALE', 'sale'),
 ('SYSTEM', 'system');
-INSERT INTO farm_config (config_key, value, description, type)
+INSERT INTO farm_config (config_key, "value", description, type)
 VALUES
 ('incubation_days', '3', 'Días para que un huevo se convierta en gallina', 'INT'),
 ('max_eggs', '2000', 'Cantidad máxima de huevos en stock', 'INT'),
