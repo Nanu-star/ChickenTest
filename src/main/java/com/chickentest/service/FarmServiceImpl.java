@@ -18,12 +18,22 @@ import com.chickentest.repository.CategoryRepository;
 import com.chickentest.repository.MovementRepository;
 import com.chickentest.repository.UserRepository;
 import com.chickentest.service.FarmService;
+import com.fasterxml.jackson.databind.JsonNode;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+
 import java.util.Date;
 import java.util.List;
 import javax.annotation.PostConstruct;
+import java.time.ZoneId;
 
 @Service
 public class FarmServiceImpl implements FarmService {
@@ -34,6 +44,7 @@ public class FarmServiceImpl implements FarmService {
     private final MovementRepository movementRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final AiService aiService;
     private static final int MAX_EGGS = 2000;
     private static final int MAX_CHICKENS = 1500;
     private Category chickensCategory;
@@ -44,11 +55,12 @@ public class FarmServiceImpl implements FarmService {
             ArticleRepository articleRepository,
             MovementRepository movementRepository,
             CategoryRepository categoryRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository, AiService aiService) {
         this.articleRepository = articleRepository;
         this.movementRepository = movementRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
+        this.aiService = aiService;
     }
 
     @PostConstruct
@@ -72,9 +84,14 @@ public class FarmServiceImpl implements FarmService {
     @Override
     @Transactional(readOnly = true)
     public List<Movement> getMovements(User user) {
-        return movementRepository.findByUsername(user.getUsername());
+        List<Movement> movements = movementRepository.findByUsername(user.getUsername());
+        aiService.generateAIReport(movements, user);
+        return movements;
     }
 
+    
+
+    
     @Override
     @Transactional
     public boolean buy(Long articleId, int quantity, User user) {
@@ -275,4 +292,12 @@ public class FarmServiceImpl implements FarmService {
             throw new FarmException("Article category must be specified");
         }
     }
+
+    // Helper to check if a Date is today
+    private boolean isToday(Date date) {
+        if (date == null) return false;
+        LocalDate movementDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        return movementDate.equals(LocalDate.now());
+    }
 }
+

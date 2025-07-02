@@ -14,7 +14,7 @@
         </div>
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
 
-        <form th:action="@{/dashboard/articles/add}" method="post" th:object="${articulo}" class="needs-validation" novalidate>
+        <form th:action="@{/dashboard/articles/add}" method="post" th:object="${article}" class="needs-validation" novalidate>
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
             <div class="mb-3">
     <label for="name" class="form-label">Name / <span class="text-muted">Nombre</span></label>

@@ -62,6 +62,7 @@ public class FarmController {
     @PreAuthorize("isAuthenticated()")
     public String showAddArticleForm(@AuthenticationPrincipal User user, Model model) {
         try {
+            model.addAttribute("article", new Article()); // Ensure form backing object exists
             List<Category> categories = farmService.getCategories();
             model.addAttribute("categories", categories);
             return "add-article";
@@ -73,40 +74,36 @@ public class FarmController {
     }
 
     @PostMapping("/dashboard/articles/add")
-    @PreAuthorize("isAuthenticated()")
-    public String addArticle(@AuthenticationPrincipal User user, 
-                            @RequestParam String name,
-                            @RequestParam Long category,
-                            @RequestParam int units,
-                            @RequestParam double price,
-                            @RequestParam int age,
-                            Model model) {
-        try {
-            Article article = Article.builder()
-                .name(name)
-                .category(categoryRepository.findById(category)
-                    .orElseThrow(() -> new RuntimeException("Category not found")))
-                .units(units)
-                .price(price)
-                .age(age)
-                .lastAgedDate(null)
-                .build();
-            
-            if (farmService.addArticle(article, user)) {
-                return "redirect:/dashboard/articles?success";
-            }
-            
-            // If addArticle failed, show error and return to form
-            model.addAttribute("error", "Failed to add article. Please check the values and try again.");
-            List<Category> categories = farmService.getCategories();
-            model.addAttribute("categories", categories);
+@PreAuthorize("isAuthenticated()")
+public String addArticle(@AuthenticationPrincipal User user,
+                        @ModelAttribute("article") Article article,
+                        Model model) {
+    try {
+        // Set the real Category entity from the selected id
+        if (article.getCategory() != null && article.getCategory().getId() != null) {
+            Category cat = categoryRepository.findById(article.getCategory().getId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+            article.setCategory(cat);
+        } else {
+            model.addAttribute("error", "Please select a valid category.");
+            model.addAttribute("categories", farmService.getCategories());
             return "add-article";
-        } catch (Exception e) {
-            logger.severe("Error adding article: " + e.getMessage());
-            model.addAttribute("error", "An error occurred while adding the article");
-            return "error";
         }
+        article.setUser(user);
+        if (farmService.addArticle(article, user)) {
+            return "redirect:/dashboard/articles?success";
+        }
+        // If addArticle failed, show error and return to form
+        model.addAttribute("error", "Failed to add article. Please check the values and try again.");
+        model.addAttribute("categories", farmService.getCategories());
+        return "add-article";
+    } catch (Exception e) {
+        logger.severe("Error adding article: " + e.getMessage());
+        model.addAttribute("error", "An error occurred while adding the article");
+        model.addAttribute("categories", farmService.getCategories());
+        return "add-article";
     }
+}
 
     @PostMapping("/dashboard/articles/buy/{id}")
     @PreAuthorize("isAuthenticated()")
