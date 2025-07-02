@@ -7,6 +7,7 @@ import com.chickentest.domain.Report;
 import com.chickentest.domain.User;
 import com.chickentest.exception.FarmException;
 import com.chickentest.exception.InsufficientBalanceException; // Added
+import com.chickentest.exception.InsufficientStockException;
 import com.chickentest.repository.UserRepository;
 import com.chickentest.repository.CategoryRepository;
 import com.chickentest.service.FarmService;

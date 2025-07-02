@@ -70,7 +70,7 @@ public class FarmServiceSchedulingTest {
         List<Movement> movements = movementRepository.findAll();
         assertEquals(1, movements.size());
         Movement m = movements.get(0);
-        assertEquals(MovementType.PRODUCTION, m.getType());
+        assertEquals(MovementType.SYSTEM, m.getType());
         assertEquals(10, m.getUnits());
     }
 }

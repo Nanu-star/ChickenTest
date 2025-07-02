@@ -4,6 +4,8 @@ package com.chickentest.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import com.chickentest.config.Constants;
 
 import com.chickentest.domain.Article;
@@ -44,15 +46,15 @@ import lombok.extern.slf4j.Slf4j;
 public class AiService {
     private final ArticleRepository articleRepository;
     private final CategoryRepository categoryRepository;
-    private final OllamaClient ollamaClient;
+    private final OpenAiClient openAiClient;
     private Category chickensCategory;
     private Category eggsCategory;
 
     @Autowired
-    public AiService(ArticleRepository articleRepository, CategoryRepository categoryRepository, OllamaClient ollamaClient) {
+    public AiService(ArticleRepository articleRepository, CategoryRepository categoryRepository, OpenAiClient openAiClient) {
         this.articleRepository = articleRepository;
         this.categoryRepository = categoryRepository;
-        this.ollamaClient = ollamaClient;
+        this.openAiClient = openAiClient;
     }
 
     @PostConstruct
@@ -78,7 +80,7 @@ public class AiService {
         // This is just a simplified version of your stream logic for the example
         if (movements != null) {
             eggsProducedToday = movements.stream()
-        .filter(m -> m.getType() == MovementType.PRODUCTION) // Assuming MovementType enum exists
+        .filter(m -> m.getType() == MovementType.SYSTEM) // Assuming MovementType enum exists
         .filter(m -> m.getArticle().getCategory().getName().equalsIgnoreCase("EGG"))
         .filter(m -> isToday(m.getDate()))
         .mapToInt(Movement::getUnits)
@@ -111,16 +113,16 @@ public class AiService {
             currentEggStock,
             eggsProducedToday,
             eggsSoldToday,
-            user.getBalance(),
-            user.getRole()
+            userBalance,
+            userRole
         );
 
         try {
-            String generatedText = ollamaClient.generateReport(prompt);
+            String aiReport = openAiClient.generateReport(prompt);
             log.info("Successfully generated AI report.");
-            return ResponseEntity.ok(generatedText);
+            return ResponseEntity.ok(aiReport);
         }  catch (RuntimeException e) {
-            log.error("Error during AI report generation via OllamaClient: {}", e.getMessage(), e);
+            log.error("Error during AI report generation via OpenAiClient: {}", e.getMessage(), e);
             
             if (e.getMessage() != null && e.getMessage().contains("AI service is currently unavailable")) {
                 return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getMessage());
@@ -135,9 +137,8 @@ public class AiService {
     }
     
     // Helper to check if a Date is today
-    private boolean isToday(Date date) {
+    private boolean isToday(LocalDateTime date) {
         if (date == null) return false;
-        LocalDate movementDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-        return movementDate.equals(LocalDate.now());
+        return date.equals(LocalDateTime.now());
     }
 }
