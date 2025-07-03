@@ -19,10 +19,10 @@ public interface FarmService {
     String generateAIReport(List<Movement> movements, User user);
 
     @Transactional
-    boolean buy(Long articleId, int quantity, User user);
+    void buy(Long articleId, int quantity, User user); // Return type void
 
     @Transactional
-    boolean sell(Long articleId, int quantity, User user);
+    void sell(Long articleId, int quantity, User user); // Return type void
 
     @Transactional
     Article addArticle(Article article, User user);
@@ -41,10 +41,12 @@ public interface FarmService {
     @Transactional
     void hatchEggs();
 
-    @Transactional
-    void hatchEggsInternal();
+    // void hatchEggsInternal(); // Removed
 
     @Transactional(readOnly = true)
     List<Category> getCategories();
+
+    @Transactional
+    void updateUserBalance(User authenticatedUser, double newBalance); // Added
 }
 
