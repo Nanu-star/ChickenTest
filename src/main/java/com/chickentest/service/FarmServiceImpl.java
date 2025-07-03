@@ -46,7 +46,7 @@ public class FarmServiceImpl implements FarmService {
     }
 
     @PostConstruct
-    private void initCategories() {
+    void initCategories() { // Changed from private to package-private
         chickensCategory = categoryRepository.findByName("CHICKEN");
         eggsCategory = categoryRepository.findByName("EGG");
         if (chickensCategory == null || eggsCategory == null) {
@@ -104,11 +104,13 @@ public class FarmServiceImpl implements FarmService {
     @Transactional
     public Article addArticle(Article article, User user) {
         // Validar y setear categoría real desde DB
-        if (article.getCategory() != null && article.getCategory().getId() != null) {
-            Category cat = categoryRepository.findById(article.getCategory().getId())
-                    .orElseThrow(() -> new FarmException("Category not found with ID: " + article.getCategory().getId()));
-            article.setCategory(cat);
+        if (article.getCategory() == null || article.getCategory().getId() == null) {
+            throw new FarmException("Category not found with ID: " + (article.getCategory() == null ? "null" : article.getCategory().getId()));
         }
+        Category cat = categoryRepository.findById(article.getCategory().getId())
+                .orElseThrow(() -> new FarmException("Category not found with ID: " + article.getCategory().getId()));
+        article.setCategory(cat);
+
         // Setear usuario real
         article.setUser(user);
         // Inicializar movements si es null
@@ -165,7 +167,7 @@ public class FarmServiceImpl implements FarmService {
         incrementEggAges();
     }
 
-    private void incrementEggAges() {
+    void incrementEggAges() { // Changed from private to package-private
         LocalDate today = LocalDate.now();
         List<Article> eggs = articleRepository.findByCategory(eggsCategory);
         for (Article egg : eggs) {
