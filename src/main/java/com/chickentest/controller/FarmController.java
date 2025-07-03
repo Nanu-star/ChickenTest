@@ -133,7 +133,7 @@ public class FarmController {
                 return ResponseEntity.badRequest().body("Please select a valid category.");
             }
             article.setUser(user);
-            if (farmService.addArticle(article, user)) {
+            if (farmService.addArticle(article, user)!=null) {
                 return ResponseEntity.ok("Article added successfully");
             }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to add article. Please check the values and try again.");
@@ -225,8 +225,7 @@ public class FarmController {
 
 
     @GetMapping("/report")
-    public String getFarmReport(@RequestParam Long userId) {
-        User user = userRepository.findById(userId).orElse(null);
+    public String getFarmReport(@AuthenticationPrincipal User user) {
         List<Movement> movements = movementRepository.findAllByUser(user);
         return farmService.generateAIReport(movements, user);
     }

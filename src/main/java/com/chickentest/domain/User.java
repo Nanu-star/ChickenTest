@@ -6,6 +6,7 @@ import lombok.ToString;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -14,11 +15,13 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,6 +35,11 @@ import lombok.Data;
 @AllArgsConstructor
 @Builder
 public class User implements UserDetails, Serializable {
+
+    @OneToMany(mappedBy = "user")
+    @com.fasterxml.jackson.annotation.JsonManagedReference
+    private java.util.List<Movement> movements;
+
     
     private static final long serialVersionUID = 1L;
     @Id
@@ -49,6 +57,9 @@ public class User implements UserDetails, Serializable {
 
     @Column(nullable = false)
     private String role = "USER";
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Article> articles = new ArrayList<>();
 
     public static User create(String username, String password, double balance) {
         User user = new User();

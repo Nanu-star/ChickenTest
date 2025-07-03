@@ -11,6 +11,8 @@ import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -29,8 +31,8 @@ public class Category {
     @Column(name = "display_name", nullable = false)
     private String displayName;
 
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
-    private List<Article> articles;
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Article> articles = new ArrayList<>();
 
     public Category(Long id, String name, String displayName) {
         this.id = id;

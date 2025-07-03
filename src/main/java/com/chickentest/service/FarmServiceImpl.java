@@ -1,64 +1,43 @@
 package com.chickentest.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import java.time.LocalDate;
 import com.chickentest.config.Constants;
-
-import com.chickentest.domain.Article;
-import com.chickentest.domain.Category;
-import com.chickentest.domain.Movement;
-import com.chickentest.domain.MovementType;
-import com.chickentest.domain.Report;
-import com.chickentest.domain.User;
+import com.chickentest.domain.*;
 import com.chickentest.exception.FarmException;
 import com.chickentest.exception.InsufficientStockException;
-import com.chickentest.exception.InsufficientBalanceException; // Added
-import com.chickentest.repository.ArticleRepository;
-import com.chickentest.repository.CategoryRepository;
-import com.chickentest.repository.MovementRepository;
-import com.chickentest.repository.UserRepository;
-import com.chickentest.service.FarmService;
-import com.fasterxml.jackson.databind.JsonNode;
-
+import com.chickentest.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-// import java.util.Date; // No longer needed
-import java.util.List;
 import jakarta.annotation.PostConstruct;
-// import java.time.ZoneId; // No longer needed
-import java.time.LocalDateTime; // Added for LocalDateTime.now()
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class FarmServiceImpl implements FarmService {
     private static final Logger logger = LoggerFactory.getLogger(FarmServiceImpl.class);
-    private static final String ERROR_PREFIX = "[FarmService] ";
 
     private final ArticleRepository articleRepository;
     private final MovementRepository movementRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final AiService aiService;
+
     private static final int MAX_EGGS = 2000;
     private static final int MAX_CHICKENS = 1500;
     private Category chickensCategory;
     private Category eggsCategory;
 
     @Autowired
-    public FarmServiceImpl(
-            ArticleRepository articleRepository,
-            MovementRepository movementRepository,
-            CategoryRepository categoryRepository,
-            UserRepository userRepository, AiService aiService) {
+    public FarmServiceImpl(ArticleRepository articleRepository,
+                           MovementRepository movementRepository,
+                           CategoryRepository categoryRepository,
+                           UserRepository userRepository,
+                           AiService aiService) {
         this.articleRepository = articleRepository;
         this.movementRepository = movementRepository;
         this.categoryRepository = categoryRepository;
@@ -69,12 +48,9 @@ public class FarmServiceImpl implements FarmService {
     @PostConstruct
     private void initCategories() {
         chickensCategory = categoryRepository.findByName("CHICKEN");
-        if (chickensCategory == null) {
-            throw new FarmException(ERROR_PREFIX + "Required category 'CHICKEN' not found in database");
-        }
         eggsCategory = categoryRepository.findByName("EGG");
-        if (eggsCategory == null) {
-            throw new FarmException(ERROR_PREFIX + "Required category 'EGG' not found in database");
+        if (chickensCategory == null || eggsCategory == null) {
+            throw new FarmException("Required categories not found in database");
         }
     }
 
@@ -98,9 +74,7 @@ public class FarmServiceImpl implements FarmService {
                 .orElseThrow(() -> new FarmException("Article not found with id: " + articleId));
         double amount = article.getPrice() * quantity;
 
-        if (!checkStockLimit(article, quantity)) {
-            return false;
-        }
+        if (!checkStockLimit(article, quantity)) return false;
 
         performTransaction(article, quantity, amount, MovementType.BUY, user);
         return true;
@@ -112,17 +86,14 @@ public class FarmServiceImpl implements FarmService {
         validatePositiveQuantity(quantity);
         Article article = articleRepository.findById(articleId)
                 .orElseThrow(() -> new InsufficientStockException("Article not found with ID: " + articleId));
-
         if (article.getUnits() < quantity) {
             throw new InsufficientStockException(
                     "Insufficient stock. Available: " + article.getUnits() + ", requested: " + quantity);
         }
-
         double amount = article.getPrice() * quantity;
 
-        if (!checkStockLimit(article, -quantity)) {
+        if (!checkStockLimit(article, -quantity))
             throw new InsufficientStockException("Stock limit would be violated by this sale");
-        }
 
         performTransaction(article, quantity, amount, MovementType.SALE, user);
         logger.info("Sale successful");
@@ -131,53 +102,34 @@ public class FarmServiceImpl implements FarmService {
 
     @Override
     @Transactional
-    public boolean addArticle(Article article, User user) {
-        logger.info("addArticle called with article: {} and user: {}", article, user);
-        logger.debug("Validating article category");
-        validateArticleCategory(article);
-        logger.debug("Checking stock limit for article: {}", article);
-        if (!checkStockLimit(article, article.getUnits())) {
-            throw new FarmException("Stock limit exceeded for this category");
+    public Article addArticle(Article article, User user) {
+        // Validar y setear categoría real desde DB
+        if (article.getCategory() != null && article.getCategory().getId() != null) {
+            Category cat = categoryRepository.findById(article.getCategory().getId())
+                    .orElseThrow(() -> new FarmException("Category not found with ID: " + article.getCategory().getId()));
+            article.setCategory(cat);
+        }
+        // Setear usuario real
+        article.setUser(user);
+        // Inicializar movements si es null
+        if (article.getMovements() == null) article.setMovements(new ArrayList<>());
+
+        // Setear referencias en movements
+        for (Movement movement : article.getMovements()) {
+            movement.setId(null);
+            movement.setArticle(article);
+            movement.setUser(user);
         }
 
-        // Ensure user is set on the article if it's a new one being added to their
-        // inventory
-        // This might be redundant if 'article.user' is already set by the controller,
-        // but good for safety.
-        if (article.getUser() == null) {
-            article.setUser(user);
-        }
-        // Defensive: Ensure movements is never null
-        if (article.getMovements() == null) {
-            article.setMovements(new ArrayList<>());
-        }
-
-        // Set creation date if it's a new article
-        if (article.getCreation() == null) {
-            article.setCreation(LocalDateTime.now());
-        }
-
-        // Save the article to get its ID
-        Article savedArticle = articleRepository.save(article);
-
-        // Now create and save the Movement(s), assigning the saved article
-        double cost = article.getPrice() * article.getUnits();
-        Movement movement = Movement.createMovement(savedArticle, article.getUnits(), cost, user);
-        movement.setType(MovementType.BUY);
-        movementRepository.save(movement);
-
-        // Optionally, update user's balance here if needed
-        user.setBalance(user.getBalance() - cost);
-        userRepository.save(user);
-
-        return true;
+        // Guardar article (si tenés cascade en movements, se guardan juntos)
+        return articleRepository.save(article);
     }
 
     @Override
     @Transactional
     public Article getArticle(Long id) {
         return articleRepository.findById(id)
-                .orElseThrow(() -> new FarmException(ERROR_PREFIX + "Article not found with ID: " + id));
+                .orElseThrow(() -> new FarmException("Article not found with ID: " + id));
     }
 
     @Override
@@ -234,7 +186,7 @@ public class FarmServiceImpl implements FarmService {
                             .age(0)
                             .units(hatchedUnits)
                             .price(egg.getPrice())
-                            .creation(LocalDateTime.now()) // Added creation timestamp for new chicken
+                            .createdAt(LocalDateTime.now())
                             .build();
                     articleRepository.save(chicken);
 
@@ -270,27 +222,16 @@ public class FarmServiceImpl implements FarmService {
         return true;
     }
 
-    private void performTransaction(Article article, int quantity, double transactionAmount, MovementType type,
-            User user) {
-        // For PURCHASE: increase stock (add units). For SALE: decrease stock (subtract
-        // units)
-        int updatedUnits = type == MovementType.BUY ? article.getUnits() + quantity : article.getUnits() - quantity;
+    private void performTransaction(Article article, int quantity, double transactionAmount, MovementType type, User user) {
+        // Modifica stock
+        int updatedUnits = type == MovementType.BUY
+                ? article.getUnits() + quantity
+                : article.getUnits() - quantity;
 
-        /*
-         * if (type == MovementType.PURCHASE) {
-         * if (user.getBalance() < transactionAmount) {
-         * throw new InsufficientBalanceException("Insufficient balance. Required: " +
-         * transactionAmount + ", Available: " + user.getBalance());
-         * }
-         * user.setBalance(user.getBalance() - transactionAmount);
-         * } else if (type == MovementType.SALE) {
-         * user.setBalance(user.getBalance() + transactionAmount);
-         * }
-         */
-        article.setUnits(updatedUnits); // Set units after potential exceptions for balance
+        article.setUnits(updatedUnits);
 
         Movement movement = Movement.createMovement(article, quantity, transactionAmount, user);
-        movement.setType(type); // Ensure type is set correctly on the movement if createMovement defaults it
+        movement.setType(type);
 
         articleRepository.save(article);
         userRepository.save(user);
@@ -298,21 +239,14 @@ public class FarmServiceImpl implements FarmService {
     }
 
     private void validatePositiveQuantity(int quantity) {
-        if (quantity <= 0) {
-            throw new FarmException("Quantity must be positive");
-        }
+        if (quantity <= 0) throw new FarmException("Quantity must be positive");
     }
 
-    private void validateArticleCategory(Article article) {
-        if (article.getCategory() == null) {
-            throw new FarmException("Article category must be specified");
-        }
-    }
-
-    public String getAIReport(List<Movement> movements, User user) {
+    // ---------- AI Report ----------
+    @Override
+    public String generateAIReport(List<Movement> movements, User user) {
         int totalChickens = articleRepository.findTotalUnitsByCategory(chickensCategory);
-        int eggsProducedToday = 0;
-        int eggsSoldToday = 0;
+        int eggsProducedToday = 0, eggsSoldToday = 0;
         int currentEggStock = articleRepository.findTotalUnitsByCategory(eggsCategory);
 
         if (movements != null) {
@@ -353,52 +287,9 @@ public class FarmServiceImpl implements FarmService {
     }
 
     private boolean isToday(LocalDateTime date) {
-        if (date == null)
-            return false;
-        return date.equals(LocalDateTime.now());
-    }
-
-    @Override
-    public String generateAIReport(List<Movement> movements, User user) {
-        int totalChickens = articleRepository.findTotalUnitsByCategory(chickensCategory);
-        int eggsProducedToday = 0;
-        int eggsSoldToday = 0;
-        int currentEggStock = articleRepository.findTotalUnitsByCategory(eggsCategory);
-
-        if (movements != null) {
-            eggsProducedToday = movements.stream()
-                    .filter(m -> m.getType() == MovementType.SYSTEM)
-                    .filter(m -> m.getArticle().getCategory().getName().equalsIgnoreCase("EGG"))
-                    .filter(m -> isToday(m.getDate()))
-                    .mapToInt(Movement::getUnits)
-                    .sum();
-            eggsSoldToday = movements.stream()
-                    .filter(m -> m.getType() == MovementType.SALE)
-                    .filter(m -> m.getArticle().getCategory().getName().equalsIgnoreCase("EGG"))
-                    .filter(m -> isToday(m.getDate()))
-                    .mapToInt(Movement::getUnits)
-                    .sum();
-        }
-
-        double userBalance = user != null ? user.getBalance() : 0.0;
-        String userRole = user != null ? user.getRole() : "USER";
-
-        String prompt = String.format(
-                "Here is my farm data:\n" +
-                        "- Current chicken stock: %d\n" +
-                        "- Current egg stock: %d\n" +
-                        "- Eggs produced today: %d\n" +
-                        "- Eggs sold today: %d\n" +
-                        "- User balance: %.2f\n" +
-                        "- User role: %s\n" +
-                        "Generate a brief report, highlighting strengths and weaknesses, possible improvements, and important alerts.",
-                totalChickens,
-                currentEggStock,
-                eggsProducedToday,
-                eggsSoldToday,
-                userBalance,
-                userRole);
-
-        return aiService.generateReport(prompt);
+        // Solo compara la fecha, ignora hora/min
+        if (date == null) return false;
+        LocalDate now = LocalDate.now();
+        return date.toLocalDate().isEqual(now);
     }
 }

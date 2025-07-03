@@ -1,0 +1,429 @@
+openapi: 3.0.1
+info:
+  title: Mi API
+  version: "1.0"
+servers:
+  - url: http://localhost:8080
+    description: Generated server url
+security:
+  - bearerAuth: []
+paths:
+  /farm/articles/{id}:
+    put:
+      tags:
+        - farm-controller
+      operationId: updateArticle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Article'
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+    delete:
+      tags:
+        - farm-controller
+      operationId: deleteArticle
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /farm/update-balance:
+    post:
+      tags:
+        - farm-controller
+      operationId: updateBalance
+      parameters:
+        - name: newBalance
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /farm/sell:
+    post:
+      tags:
+        - farm-controller
+      operationId: sellArticle
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: quantity
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /farm/buy:
+    post:
+      tags:
+        - farm-controller
+      operationId: buyArticle
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: quantity
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /farm/articles:
+    get:
+      tags:
+        - farm-controller
+      operationId: articles
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Article'
+    post:
+      tags:
+        - farm-controller
+      operationId: addArticle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Article'
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /farm/articles/sell/{id}:
+    post:
+      tags:
+        - farm-controller
+      operationId: sellArticleById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: quantity
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /farm/articles/buy/{id}:
+    post:
+      tags:
+        - farm-controller
+      operationId: buyArticleById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: quantity
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /auth/register:
+    post:
+      tags:
+        - auth-controller
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+      security:
+        - bearerAuth: []
+  /auth/login:
+    post:
+      tags:
+        - auth-controller
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+      security:
+        - bearerAuth: []
+  /farm/report:
+    get:
+      tags:
+        - farm-controller
+      operationId: getFarmReport
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /farm/movements:
+    get:
+      tags:
+        - farm-controller
+      operationId: movements
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Movement'
+  /farm/categories:
+    get:
+      tags:
+        - farm-controller
+      operationId: categories
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+  /farm/ai-report:
+    get:
+      tags:
+        - farm-controller
+      operationId: aiReport
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /auth/me:
+    get:
+      tags:
+        - auth-controller
+      operationId: getCurrentUser
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+      security:
+        - bearerAuth: []
+components:
+  schemas:
+    Article:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        units:
+          type: integer
+          format: int32
+        name:
+          type: string
+        price:
+          type: number
+          format: double
+        age:
+          type: integer
+          format: int32
+        lastAgedDate:
+          type: string
+          format: date
+        category:
+          $ref: '#/components/schemas/Category'
+        user:
+          $ref: '#/components/schemas/User'
+        production:
+          type: string
+        movements:
+          type: array
+          items:
+            $ref: '#/components/schemas/Movement'
+        creation:
+          type: string
+          format: date-time
+        displayPrice:
+          type: string
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        displayName:
+          type: string
+        articles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Article'
+    GrantedAuthority:
+      type: object
+      properties:
+        authority:
+          type: string
+    Movement:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        article:
+          $ref: '#/components/schemas/Article'
+        date:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum:
+            - BUY
+            - SALE
+            - SYSTEM
+        units:
+          type: integer
+          format: int32
+        amount:
+          type: number
+          format: double
+        user:
+          $ref: '#/components/schemas/User'
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        password:
+          type: string
+        balance:
+          type: number
+          format: double
+        role:
+          type: string
+        enabled:
+          type: boolean
+        authorities:
+          type: array
+          items:
+            $ref: '#/components/schemas/GrantedAuthority'
+        accountNonExpired:
+          type: boolean
+        credentialsNonExpired:
+          type: boolean
+        accountNonLocked:
+          type: boolean
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

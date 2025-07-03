@@ -25,7 +25,7 @@ public interface FarmService {
     boolean sell(Long articleId, int quantity, User user);
 
     @Transactional
-    boolean addArticle(Article article, User user);
+    Article addArticle(Article article, User user);
 
     @Transactional
     Article updateArticle(Article article);

@@ -1,6 +1,5 @@
 package com.chickentest.domain;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -17,10 +16,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+
+import com.fasterxml.jackson.annotation.JsonBackReference;
 @Entity
 @Table(name = "movements")
 @Data
@@ -49,6 +46,7 @@ public class Movement {
     @Column(nullable = false)
     private double amount;
     
+    @JsonBackReference
     @ManyToOne
     private User user;
 

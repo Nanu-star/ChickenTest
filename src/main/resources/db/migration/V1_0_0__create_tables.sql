@@ -48,7 +48,6 @@ CREATE TABLE movements (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     article_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
-    name VARCHAR(255) NOT NULL,
     date TIMESTAMP NOT NULL,
     type VARCHAR(255) NOT NULL,
     units INTEGER NOT NULL,
