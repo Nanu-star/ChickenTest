@@ -27,10 +27,18 @@ public class FarmServiceImpl implements FarmService {
     private final UserRepository userRepository;
     private final AiService aiService;
 
-    private static final int MAX_EGGS = 2000;
-    private static final int MAX_CHICKENS = 1500;
+    @org.springframework.beans.factory.annotation.Value("${farm.max-eggs:2000}")
+    private int maxEggs;
+
+    @org.springframework.beans.factory.annotation.Value("${farm.max-chickens:1500}")
+    private int maxChickens;
+
+    @org.springframework.beans.factory.annotation.Value("${farm.egg-hatch-days:3}")
+    private int eggHatchDays;
+
     private Category chickensCategory;
     private Category eggsCategory;
+    private User systemUser; // Added for system user
 
     @Autowired
     public FarmServiceImpl(ArticleRepository articleRepository,
@@ -46,12 +54,27 @@ public class FarmServiceImpl implements FarmService {
     }
 
     @PostConstruct
-    void initCategories() { // Changed from private to package-private
+    void initializeFarmData() { // Renamed and expanded
         chickensCategory = categoryRepository.findByName("CHICKEN");
         eggsCategory = categoryRepository.findByName("EGG");
         if (chickensCategory == null || eggsCategory == null) {
-            throw new FarmException("Required categories not found in database");
+            throw new FarmException("Required categories (CHICKEN, EGG) not found in database. Please initialize them.");
         }
+
+        // Initialize system user
+        this.systemUser = userRepository.findByUsername("system")
+            .orElseGet(() -> {
+                User sysUser = new User();
+                sysUser.setUsername("system");
+                // In a real app, password should be securely hashed if login was possible,
+                // or made clear it's a system-only, non-loginable account.
+                sysUser.setPassword("---system_account_no_login---");
+                sysUser.setRole("SYSTEM"); // Assuming a "SYSTEM" role exists or can be handled
+                sysUser.setEnabled(false); // Typically system users don't log in
+                sysUser.setBalance(0); // System user shouldn't have a balance for transactions
+                logger.info("Creating system user 'system'.");
+                return userRepository.save(sysUser);
+            });
     }
 
     @Override
@@ -68,36 +91,59 @@ public class FarmServiceImpl implements FarmService {
 
     @Override
     @Transactional
-    public boolean buy(Long articleId, int quantity, User user) {
+    public void buy(Long articleId, int quantity, User authenticatedUser) { // Return void, User is authenticatedPrincipal
         validatePositiveQuantity(quantity);
-        Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new FarmException("Article not found with id: " + articleId));
+
+        Article article = articleRepository.findByIdForUpdate(articleId) // Use locking
+                .orElseThrow(() -> new ArticleNotFoundException("Article to buy not found with id: " + articleId));
+
+        if (!checkStockLimitCanAdd(article, quantity)) {
+            throw new MaxStockExceededException("Buying " + quantity + " units of " + article.getName() +
+                    " (ID: " + articleId + ") would exceed maximum stock limit for category " + article.getCategory().getName() + ".");
+        }
+
         double amount = article.getPrice() * quantity;
 
-        if (!checkStockLimit(article, quantity)) return false;
+        // Manage User balance explicitly
+        User managedUser = userRepository.findById(authenticatedUser.getId())
+                .orElseThrow(() -> new FarmException("Authenticated user not found in database with ID: " + authenticatedUser.getId()));
 
-        performTransaction(article, quantity, amount, MovementType.BUY, user);
-        return true;
+        if (managedUser.getBalance() < amount) {
+            throw new InsufficientBalanceException("Insufficient balance. Current: " + managedUser.getBalance() +
+                    ", required: " + amount + " to buy " + quantity + " of " + article.getName());
+        }
+        managedUser.setBalance(managedUser.getBalance() - amount);
+        // userRepository.save(managedUser); // JPA tracks changes to managedUser, will save on transaction commit. Explicit save is optional.
+
+        performTransaction(article, quantity, amount, MovementType.BUY, managedUser); // Pass managedUser
+        logger.info("User {} bought {} units of article {} (ID: {}) for {}", managedUser.getUsername(), quantity, article.getName(), articleId, amount);
     }
 
     @Override
     @Transactional
-    public boolean sell(Long articleId, int quantity, User user) {
+    public void sell(Long articleId, int quantity, User authenticatedUser) { // Return void
         validatePositiveQuantity(quantity);
-        Article article = articleRepository.findById(articleId)
-                .orElseThrow(() -> new InsufficientStockException("Article not found with ID: " + articleId));
+
+        Article article = articleRepository.findByIdForUpdate(articleId) // Use locking
+                .orElseThrow(() -> new ArticleNotFoundException("Article to sell not found with ID: " + articleId));
+
         if (article.getUnits() < quantity) {
             throw new InsufficientStockException(
-                    "Insufficient stock. Available: " + article.getUnits() + ", requested: " + quantity);
+                    "Insufficient stock for " + article.getName() + " (ID: " + articleId + "). Available: " +
+                    article.getUnits() + ", requested: " + quantity);
         }
+
         double amount = article.getPrice() * quantity;
 
-        if (!checkStockLimit(article, -quantity))
-            throw new InsufficientStockException("Stock limit would be violated by this sale");
+        // Manage User balance explicitly
+        User managedUser = userRepository.findById(authenticatedUser.getId())
+                .orElseThrow(() -> new FarmException("Authenticated user not found in database with ID: " + authenticatedUser.getId()));
 
-        performTransaction(article, quantity, amount, MovementType.SALE, user);
-        logger.info("Sale successful");
-        return true;
+        managedUser.setBalance(managedUser.getBalance() + amount);
+        // userRepository.save(managedUser); // JPA tracks changes, will save on transaction commit.
+
+        performTransaction(article, quantity, amount, MovementType.SALE, managedUser); // Pass managedUser
+        logger.info("User {} sold {} units of article {} (ID: {}) for {}", managedUser.getUsername(), quantity, article.getName(), articleId, amount);
     }
 
     @Override
@@ -157,24 +203,20 @@ public class FarmServiceImpl implements FarmService {
 
     @Override
     @Transactional
-    public void hatchEggs() {
+    public void hatchEggs() { // This is the main entry point for the hatching process
         incrementEggAges();
     }
 
-    @Override
-    @Transactional
-    public void hatchEggsInternal() {
-        incrementEggAges();
-    }
+    // hatchEggsInternal() removed as it's redundant with hatchEggs() being the public API.
 
-    void incrementEggAges() { // Changed from private to package-private
+    private void incrementEggAges() { // Made private, as it's an internal part of hatchEggs process
         LocalDate today = LocalDate.now();
         List<Article> eggs = articleRepository.findByCategory(eggsCategory);
         for (Article egg : eggs) {
             if (egg.getLastAgedDate() == null || egg.getLastAgedDate().isBefore(today)) {
                 egg.setAge(egg.getAge() + 1);
                 egg.setLastAgedDate(today);
-                if (egg.getAge() < Constants.EGG_HATCH_DAYS) {
+                if (egg.getAge() < eggHatchDays) { // Use injected value
                     articleRepository.save(egg);
                 } else {
                     int hatchedUnits = egg.getUnits();
@@ -198,7 +240,7 @@ public class FarmServiceImpl implements FarmService {
                             .type(MovementType.SYSTEM)
                             .units(hatchedUnits)
                             .amount(chicken.getPrice() * hatchedUnits)
-                            .user(User.builder().username("system").build())
+                            .user(this.systemUser) // Use initialized system user
                             .build();
                     movementRepository.save(movement);
                 }
@@ -212,16 +254,16 @@ public class FarmServiceImpl implements FarmService {
         return categoryRepository.findAll();
     }
 
-    private boolean checkStockLimit(Article article, int quantity) {
+    private boolean checkStockLimitCanAdd(Article article, int quantityChange) { // Renamed and clarified quantity
         Long articleCategoryId = article.getCategory().getId();
         if (articleCategoryId.equals(eggsCategory.getId())) {
             int currentEggs = articleRepository.findTotalUnitsByCategory(eggsCategory);
-            return currentEggs + quantity <= MAX_EGGS;
+            return currentEggs + quantityChange <= maxEggs; // Use injected value
         } else if (articleCategoryId.equals(chickensCategory.getId())) {
             int currentChickens = articleRepository.findTotalUnitsByCategory(chickensCategory);
-            return currentChickens + quantity <= MAX_CHICKENS;
+            return currentChickens + quantityChange <= maxChickens; // Use injected value
         }
-        return true;
+        return true; // No limit for other categories
     }
 
     private void performTransaction(Article article, int quantity, double transactionAmount, MovementType type, User user) {
@@ -236,7 +278,7 @@ public class FarmServiceImpl implements FarmService {
         movement.setType(type);
 
         articleRepository.save(article);
-        userRepository.save(user);
+        // userRepository.save(user); // Removed: User is now managed and saved implicitly by JPA if changes occurred within the transaction.
         movementRepository.save(movement);
     }
 
@@ -254,13 +296,13 @@ public class FarmServiceImpl implements FarmService {
         if (movements != null) {
             eggsProducedToday = movements.stream()
                     .filter(m -> m.getType() == MovementType.SYSTEM)
-                    .filter(m -> m.getArticle().getCategory().getName().equalsIgnoreCase("EGG"))
+                    .filter(m -> m.getArticle().getCategory().getId().equals(eggsCategory.getId())) // Use ID
                     .filter(m -> isToday(m.getDate()))
                     .mapToInt(Movement::getUnits)
                     .sum();
             eggsSoldToday = movements.stream()
                     .filter(m -> m.getType() == MovementType.SALE)
-                    .filter(m -> m.getArticle().getCategory().getName().equalsIgnoreCase("EGG"))
+                    .filter(m -> m.getArticle().getCategory().getId().equals(eggsCategory.getId())) // Use ID
                     .filter(m -> isToday(m.getDate()))
                     .mapToInt(Movement::getUnits)
                     .sum();
@@ -293,5 +335,19 @@ public class FarmServiceImpl implements FarmService {
         if (date == null) return false;
         LocalDate now = LocalDate.now();
         return date.toLocalDate().isEqual(now);
+    }
+
+    @Override
+    @Transactional
+    public void updateUserBalance(User authenticatedUser, double newBalance) {
+        if (newBalance < 0) {
+            throw new IllegalArgumentException("Balance cannot be negative. Provided: " + newBalance);
+        }
+        User managedUser = userRepository.findById(authenticatedUser.getId())
+                .orElseThrow(() -> new FarmException("User not found with ID: " + authenticatedUser.getId() + " while trying to update balance."));
+
+        managedUser.setBalance(newBalance);
+        userRepository.save(managedUser); // Explicit save here as it's the primary purpose of the method
+        logger.info("User {} balance updated to {}", managedUser.getUsername(), newBalance);
     }
 }
