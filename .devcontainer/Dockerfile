@@ -1,11 +1,16 @@
-# Imagen base con JDK 17
 FROM eclipse-temurin:17-jdk
 
-# Crea directorio de trabajo
+# Crea el directorio de trabajo
 WORKDIR /app
 
-# Copia el jar compilado (usado después del build)
-COPY target/*.jar app.jar
+# Copia el código fuente (todo el proyecto)
+COPY . .
 
-# Comando para iniciar tu app
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+# Compila el proyecto con Maven
+RUN ./mvnw clean package -DskipTests
+
+# Expone el puerto si querés (opcional)
+EXPOSE 8080
+
+# Corre la app
+ENTRYPOINT ["java", "-jar", "target/chickentest-0.0.1-SNAPSHOT.jar"]
