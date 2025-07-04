@@ -42,7 +42,28 @@ mvn spring-boot:run
 
 Esto compilará el proyecto y levantará el servidor embebido de Spring Boot.
 
-### Actualización de la base de datos
-Si cuentas con una base de datos existente creada antes de esta versión,
-ejecuta la migración de Flyway `V1_0_2__add_article_fields.sql` para añadir las
-columnas `age`, `production` y `display_price` a la tabla `articles`.
+---
+
+## Ejecución en Dev Containers
+
+Este proyecto es compatible con [Development Containers (devcontainers)](https://containers.dev/). Para comenzar:
+
+1. **Requisitos**
+   - Tener [Docker](https://www.docker.com/) instalado y en ejecución.
+   - Tener [Visual Studio Code](https://code.visualstudio.com/) con la extensión [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
+
+2. **Cómo iniciar**
+   - Abre la carpeta del proyecto en VS Code.
+   - Cuando se te solicite, selecciona **Reabrir en contenedor** (o usa la paleta de comandos: “Dev Containers: Reopen in Container”).
+
+3. **Qué sucede automáticamente**
+   - El contenedor se construye usando el `Dockerfile` proporcionado.
+   - Se instalan las dependencias de Maven (`mvn clean install`).
+   - La aplicación Spring Boot se inicia automáticamente con `mvn spring-boot:run` utilizando el perfil `dev`.
+   - El puerto 8080 se reenvía, por lo que puedes acceder a la aplicación en `http://localhost:8080` desde tu navegador.
+
+4. **Persistencia**
+   - Tu espacio de trabajo local se monta dentro del contenedor para edición en vivo del código.
+   - Tu repositorio local de Maven (`~/.m2`) se monta para acelerar la resolución de dependencias.
+
+---

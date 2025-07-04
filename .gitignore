@@ -1,5 +1,6 @@
 # Ignore build output
 /target/
+target/
 
 # IDE files
 /.idea/
