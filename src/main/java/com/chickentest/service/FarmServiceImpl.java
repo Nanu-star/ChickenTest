@@ -30,6 +30,7 @@ public class FarmServiceImpl implements FarmService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final AiService aiService;
+    private final FarmMetricsService farmMetricsService;
 
     @Value("${farm.max-eggs:2000}")
     private int maxEggs;
@@ -44,17 +45,20 @@ public class FarmServiceImpl implements FarmService {
     private Category eggsCategory;
     private User systemUser; // Added for system user
 
+
     @Autowired
     public FarmServiceImpl(ArticleRepository articleRepository,
                            MovementRepository movementRepository,
                            CategoryRepository categoryRepository,
                            UserRepository userRepository,
-                           AiService aiService) {
+                           AiService aiService,
+                           FarmMetricsService farmMetricsService) {
         this.articleRepository = articleRepository;
         this.movementRepository = movementRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.aiService = aiService;
+        this.farmMetricsService = farmMetricsService;
     }
 
     @PostConstruct
@@ -106,6 +110,8 @@ public class FarmServiceImpl implements FarmService {
 
         performTransaction(article, quantity, amount, MovementType.BUY, managedUser); // Pass managedUser
         logger.info("User {} bought {} units of article {} (ID: {}) for {}", managedUser.getUsername(), quantity, article.getName(), articleId, amount);
+        farmMetricsService.incrementBuy();
+
     }
 
     @Override
@@ -133,6 +139,7 @@ public class FarmServiceImpl implements FarmService {
 
         performTransaction(article, quantity, amount, MovementType.SALE, managedUser); // Pass managedUser
         logger.info("User {} sold {} units of article {} (ID: {}) for {}", managedUser.getUsername(), quantity, article.getName(), articleId, amount);
+        farmMetricsService.incrementSale();
     }
 
     @Override
@@ -157,9 +164,10 @@ public class FarmServiceImpl implements FarmService {
             movement.setArticle(article);
             movement.setUser(user);
         }
-
+        Article savedArticle = articleRepository.save(article);
         // Guardar article (si tenés cascade en movements, se guardan juntos)
-        return articleRepository.save(article);
+        farmMetricsService.incrementAddArticle();
+        return savedArticle;
     }
 
     @Override
@@ -194,6 +202,7 @@ public class FarmServiceImpl implements FarmService {
     @Transactional
     public void hatchEggs() { // This is the main entry point for the hatching process
         incrementEggAges();
+
     }
 
     // hatchEggsInternal() removed as it's redundant with hatchEggs() being the public API.
@@ -212,7 +221,8 @@ public class FarmServiceImpl implements FarmService {
                     egg.setUnits(0);
                     egg.setAge(0);
                     articleRepository.save(egg);
-
+                    farmMetricsService.countHatchedEggs(hatchedUnits);
+                    farmMetricsService.countHatchEvent();
                     Article chicken = Article.builder()
                             .category(chickensCategory)
                             .name(egg.getName())

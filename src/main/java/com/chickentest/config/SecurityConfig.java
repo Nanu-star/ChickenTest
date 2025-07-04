@@ -80,6 +80,7 @@ public class SecurityConfig {
             .requestMatchers(new MvcRequestMatcher(introspector, "/v3/api-docs/**")).permitAll()
             // Endpoints de H2 console (no MVC)
             .requestMatchers(new AntPathRequestMatcher("/h2-console/**")).permitAll()
+            .requestMatchers(new AntPathRequestMatcher("/actuator/**")).permitAll() // <-- Public Actuator
             .anyRequest().authenticated()
             )
             .headers(headers -> headers.frameOptions().disable());
