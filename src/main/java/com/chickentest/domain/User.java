@@ -4,21 +4,45 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.NoArgsConstructor;
-import javax.persistence.*;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import java.util.Collection;
-import java.util.Collections;
 
-@Getter
-@Setter
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+
+@Data
 @ToString(exclude = "password")
 @Entity
 @Table(name = "users")
 @NoArgsConstructor
-public class User implements UserDetails {
+@AllArgsConstructor
+@Builder
+public class User implements UserDetails, Serializable {
+
+    @OneToMany(mappedBy = "user")
+    @JsonIgnore
+    private List<Movement> movements;
+    
+    private static final long serialVersionUID = 1L;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -33,11 +57,23 @@ public class User implements UserDetails {
     private double balance;
 
     @Column(nullable = false)
-    private String role = "USER";
+    private String role = "USER"; // should be 'USER' in DB, not 'ROLE_USER'
+    @JsonIgnore
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Article> articles = new ArrayList<>();
+
+    public static User create(String username, String password, double balance) {
+        User user = new User();
+        user.setUsername(username);
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        user.setPassword(encoder.encode(password));
+        user.setBalance(balance);
+        return user;
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + this.role));
     }
 
     @Override
@@ -58,14 +94,5 @@ public class User implements UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
-    }
-
-    public static User create(String username, String password, double balance) {
-        User user = new User();
-        user.setUsername(username);
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        user.setPassword(encoder.encode(password));
-        user.setBalance(balance);
-        return user;
     }
 }

@@ -1,10 +1,21 @@
 package com.chickentest.domain;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import javax.persistence.*;
+
+import java.util.ArrayList;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 @Data
 @NoArgsConstructor
@@ -22,8 +33,9 @@ public class Category {
     @Column(name = "display_name", nullable = false)
     private String displayName;
 
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
-    private List<Article> articles;
+    @JsonManagedReference("category-articles")
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Article> articles = new ArrayList<>();
 
     public Category(Long id, String name, String displayName) {
         this.id = id;

@@ -17,6 +17,6 @@ public class EggHatchScheduler {
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
     public void hatchEggsJob() {
-        farmService.hatchEggsInternal();
+        farmService.hatchEggs();
     }
 }

@@ -1,5 +1,6 @@
 # Ignore build output
 /target/
+target/
 
 # IDE files
 /.idea/
@@ -23,3 +24,4 @@ application.yml
 *.jar
 *.war
 *.ear
+src/main/resources/application.properties

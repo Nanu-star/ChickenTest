@@ -5,32 +5,36 @@ import com.chickentest.domain.Category;
 import com.chickentest.domain.Movement;
 import com.chickentest.domain.Report;
 import com.chickentest.domain.User;
-import com.chickentest.exception.FarmException;
-import com.chickentest.exception.InsufficientBalanceException; // Added
+import com.chickentest.exception.*; // Import all exceptions
 import com.chickentest.repository.UserRepository;
 import com.chickentest.repository.CategoryRepository;
+import com.chickentest.repository.MovementRepository;
 import com.chickentest.service.FarmService;
+
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import java.util.List;
 import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-@Controller
+@SecurityRequirement(name = "bearerAuth")
+@RestController
+@RequestMapping("/farm")
 public class FarmController {
 
     private final FarmService farmService;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
+    private final MovementRepository movementRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private static final Logger logger = LoggerFactory.getLogger(FarmController.class);
 
@@ -38,307 +42,179 @@ public class FarmController {
     public FarmController(FarmService farmService,
                           UserRepository userRepository,
                           CategoryRepository categoryRepository,
-                          BCryptPasswordEncoder passwordEncoder) {
+                          BCryptPasswordEncoder passwordEncoder, MovementRepository movementRepository) {
         this.farmService = farmService;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
+        this.movementRepository = movementRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
-    @GetMapping("/dashboard/articles")
+    @GetMapping("/articles")
     @PreAuthorize("isAuthenticated()")
-    public String articles(@AuthenticationPrincipal User user, Model model) {
+    public ResponseEntity<List<Article>> articles(@AuthenticationPrincipal User user) {
         try {
-            List<Article> articles = farmService.loadInventory(user);
-            model.addAttribute("articles", articles);
-            return "articles";
-        } catch (FarmException e) {
-            model.addAttribute("error", e.getMessage());
-            return "error";
+            return ResponseEntity.ok(farmService.loadInventory(user));
         } catch (Exception e) {
             logger.error("Unexpected error in articles: " + e.getMessage());
-            throw new FarmException("An unexpected error occurred while loading articles", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    @GetMapping("/dashboard/articles/add")
+    // Removed old /buy endpoint:
+    // @PostMapping("/buy")
+    // @PreAuthorize("isAuthenticated()")
+    // public ResponseEntity<?> buyArticle(@RequestParam Long id, @RequestParam int quantity, @AuthenticationPrincipal User user) { ... }
+
+    // Removed old /sell endpoint:
+    // @PostMapping("/sell")
+    // @PreAuthorize("isAuthenticated()")
+    // public ResponseEntity<?> sellArticle(@RequestParam Long id, @RequestParam int quantity, @AuthenticationPrincipal User user) { ... }
+
+    @PostMapping("/update-balance")
     @PreAuthorize("isAuthenticated()")
-    public String showAddArticleForm(@AuthenticationPrincipal User user, Model model) {
+    public ResponseEntity<?> updateBalance(@AuthenticationPrincipal User user, // user principal is already non-null due to PreAuthorize
+                                @RequestParam("newBalance") double newBalance) {
         try {
-            model.addAttribute("article", new Article()); // Ensure form backing object exists
-            List<Category> categories = farmService.getCategories();
-            model.addAttribute("categories", categories);
-            return "add-article";
+            farmService.updateUserBalance(user, newBalance);
+            return ResponseEntity.ok("Balance updated successfully!");
+        } catch (IllegalArgumentException iae) { // For negative balance or other invalid args from service
+            logger.warn("Invalid argument while updating balance for user {}: {}", user.getUsername(), iae.getMessage());
+            return ResponseEntity.badRequest().body(iae.getMessage());
+        } catch (FarmException fe) { // For user not found in service or other farm-related issues
+            logger.warn("FarmException while updating balance for user {}: {}", user.getUsername(), fe.getMessage());
+            // HttpStatus.NOT_FOUND might be appropriate if FarmException specifically means user not found by service.
+            // Otherwise, BAD_REQUEST can cover general business rule violations.
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(fe.getMessage());
         } catch (Exception e) {
-            logger.error("Error loading categories: " + e.getMessage());
-            model.addAttribute("error", "Failed to load categories");
-            return "error";
+            logger.error("Error updating balance for user {}: {}", user.getUsername(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error updating balance: " + e.getMessage());
         }
     }
 
-    @PostMapping("/dashboard/articles/add")
-@PreAuthorize("isAuthenticated()")
-public String addArticle(@AuthenticationPrincipal User user,
-                        @ModelAttribute("article") Article article,
-                        Model model) {
-    try {
-        // Set the real Category entity from the selected id
-        if (article.getCategory() != null && article.getCategory().getId() != null) {
-            Category cat = categoryRepository.findById(article.getCategory().getId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
-            article.setCategory(cat);
-        } else {
-            model.addAttribute("error", "Please select a valid category.");
-            model.addAttribute("categories", farmService.getCategories());
-            return "add-article";
-        }
-        article.setUser(user);
-        if (farmService.addArticle(article, user)) {
-            return "redirect:/dashboard/articles?success";
-        }
-        // If addArticle failed, show error and return to form
-        model.addAttribute("error", "Failed to add article. Please check the values and try again.");
-        model.addAttribute("categories", farmService.getCategories());
-        return "add-article";
-    } catch (InsufficientBalanceException ibe) {
-        logger.warn("Failed to add article due to insufficient balance for user {}: {}", user.getUsername(), ibe.getMessage());
-        model.addAttribute("error", ibe.getMessage());
-        model.addAttribute("article", article); // Keep the user's input
-        model.addAttribute("categories", farmService.getCategories());
-        return "add-article";
-    } catch (FarmException fe) {
-        logger.warn("FarmException while adding article for user {}: {}", user.getUsername(), fe.getMessage());
-        model.addAttribute("error", fe.getMessage());
-        model.addAttribute("article", article); // Keep the user's input
-        model.addAttribute("categories", farmService.getCategories());
-        return "add-article";
-    } catch (Exception e) {
-        logger.error("Error adding article for user {}: {}", user.getUsername(), e.getMessage(), e);
-        model.addAttribute("error", "An unexpected error occurred while adding the article.");
-        model.addAttribute("article", article); // Keep the user's input
-        model.addAttribute("categories", farmService.getCategories());
-        return "add-article";
-    }
-}
-
-    @PostMapping("/dashboard/articles/buy/{id}")
+    @PostMapping("/articles")
     @PreAuthorize("isAuthenticated()")
-    public String buyArticle(@PathVariable Long id, @RequestParam int quantity, @AuthenticationPrincipal User user, Model model, RedirectAttributes redirectAttributes) {
+    public ResponseEntity<?> addArticle(@AuthenticationPrincipal User user, @RequestBody Article article) {
         try {
-            farmService.buy(id, quantity, user);
-            redirectAttributes.addFlashAttribute("successMessage", "Article(s) bought successfully!");
-            return "redirect:/dashboard/articles";
-        } catch (InsufficientBalanceException ibe) {
-            logger.warn("Failed to buy article due to insufficient balance for user {}: {}", user.getUsername(), ibe.getMessage());
-            // For redirect, use FlashAttributes. If staying on the same page (not typical for POST-redirect-GET), use Model.
-            redirectAttributes.addFlashAttribute("errorMessage", ibe.getMessage());
-            return "redirect:/dashboard/articles"; // Or a specific error page/view if preferred
-        } catch (FarmException fe) {
-            logger.warn("FarmException while buying article for user {}: {}", user.getUsername(), fe.getMessage());
-            redirectAttributes.addFlashAttribute("errorMessage", fe.getMessage());
-            return "redirect:/dashboard/articles";
+            // Category validation and setting is now fully handled by the service layer.
+            // The controller should ensure the user is set, or let the service do it.
+            // For consistency, if service `addArticle` takes user and sets it, this line can be removed too,
+            // but it's also fine for controller to set the authenticated user on the object being passed.
+            article.setUser(user);
+
+            Article savedArticle = farmService.addArticle(article, user); // farmService.addArticle now handles category
+            if (savedArticle != null) { // Or check for specific success response/exception
+                return ResponseEntity.status(HttpStatus.CREATED).body(savedArticle); // Return CREATED and the article
+            }
+            // This part might be unreachable if service throws exceptions on failure.
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to add article. Please check the values and try again.");
+        } catch (InsufficientBalanceException ibe) { // Assuming addArticle might involve cost
+            logger.warn("Failed to add article due to insufficient balance for user {}: {}", user.getUsername(), ibe.getMessage());
+            return ResponseEntity.badRequest().body(ibe.getMessage());
+        } catch (FarmException fe) { // Covers category not found, etc. from service
+            logger.warn("FarmException while adding article for user {}: {}", user.getUsername(), fe.getMessage());
+            return ResponseEntity.badRequest().body(fe.getMessage());
         } catch (Exception e) {
-            logger.error("Error buying article for user {}: {}", user.getUsername(), e.getMessage(), e);
-            redirectAttributes.addFlashAttribute("errorMessage", "An unexpected error occurred while buying the article.");
-            return "redirect:/dashboard/articles";
+            logger.error("Error adding article for user {}: {}", user.getUsername(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while adding the article.");
         }
     }
 
-    @PostMapping("/dashboard/articles/sell/{id}")
+    @PostMapping("/articles/buy/{id}") // Path kept, method name can be simplified if desired, e.g. to buyArticle
     @PreAuthorize("isAuthenticated()")
-    public String sellArticle(@PathVariable Long id,
-                              @RequestParam int quantity,
-                              @AuthenticationPrincipal User user, // Changed from SecurityContextHolder
-                              Model model,
-                              RedirectAttributes redirectAttributes) { // Added RedirectAttributes
+    public ResponseEntity<?> buyArticle(@PathVariable Long id, @RequestParam int quantity, @AuthenticationPrincipal User user) { // Renamed method
         try {
-            farmService.sell(id, quantity, user);
-            redirectAttributes.addFlashAttribute("successMessage", "Article(s) sold successfully!"); // Changed to flash message
-            return "redirect:/dashboard/articles"; // Redirect to dashboard
-        } catch (InsufficientStockException ise) {
-            logger.warn("Failed to sell article due to insufficient stock for user {}: {}", user.getUsername(), ise.getMessage());
-            redirectAttributes.addFlashAttribute("errorMessage", ise.getMessage());
-            return "redirect:/dashboard/articles";
-        } catch (FarmException fe) {
-            logger.warn("FarmException while selling article for user {}: {}", user.getUsername(), fe.getMessage());
-            redirectAttributes.addFlashAttribute("errorMessage", fe.getMessage());
-            return "redirect:/dashboard/articles";
+            farmService.buy(id, quantity, user); // Service method now returns void and throws specific exceptions
+            return ResponseEntity.ok("Article(s) bought successfully!");
+        } catch (ArticleNotFoundException e) {
+            logger.warn("Failed to buy article: Article not found. User: {}, Article ID: {}", user.getUsername(), id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (InsufficientBalanceException | MaxStockExceededException | InsufficientStockException e) { // Grouping relevant business exceptions for 400
+            logger.warn("Failed to buy article for user {}: {} (Article ID: {})", user.getUsername(), e.getMessage(), id);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (FarmException fe) { // Other farm-specific business errors
+            logger.warn("FarmException while buying article for user {}: {} (Article ID: {})", user.getUsername(), fe.getMessage(), id);
+            return ResponseEntity.badRequest().body(fe.getMessage());
+        } catch (IllegalArgumentException iae) { // For positive quantity validation from service
+            logger.warn("Invalid argument while buying article for user {}: {} (Article ID: {})", user.getUsername(), iae.getMessage(), id);
+            return ResponseEntity.badRequest().body(iae.getMessage());
+        }
+         catch (Exception e) {
+            logger.error("Error buying article for user {}: {} (Article ID: {})", user.getUsername(), e.getMessage(), id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while buying the article.");
+        }
+    }
+
+    @PostMapping("/articles/sell/{id}") // Path kept, method name can be simplified
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> sellArticle(@PathVariable Long id, @RequestParam int quantity, @AuthenticationPrincipal User user) { // Renamed method
+        try {
+            farmService.sell(id, quantity, user); // Service method now returns void and throws specific exceptions
+            return ResponseEntity.ok("Article(s) sold successfully!");
+        } catch (ArticleNotFoundException e) {
+            logger.warn("Failed to sell article: Article not found. User: {}, Article ID: {}", user.getUsername(), id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (InsufficientStockException e) { // Specific exception for selling
+            logger.warn("Failed to sell article for user {}: {} (Article ID: {})", user.getUsername(), e.getMessage(), id);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (FarmException fe) { // Other farm-specific business errors
+            logger.warn("FarmException while selling article for user {}: {} (Article ID: {})", user.getUsername(), fe.getMessage(), id);
+            return ResponseEntity.badRequest().body(fe.getMessage());
+        } catch (IllegalArgumentException iae) { // For positive quantity validation from service
+            logger.warn("Invalid argument while selling article for user {}: {} (Article ID: {})", user.getUsername(), iae.getMessage(), id);
+            return ResponseEntity.badRequest().body(iae.getMessage());
         } catch (Exception e) {
-            logger.error("Error selling article for user {}: {}", user.getUsername(), e.getMessage(), e);
-            redirectAttributes.addFlashAttribute("errorMessage", "An unexpected error occurred while selling the article.");
-            return "redirect:/dashboard/articles";
+            logger.error("Error selling article for user {}: {} (Article ID: {})", user.getUsername(), e.getMessage(), id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred while selling the article.");
         }
     }
 
-    @GetMapping("/dashboard/movements")
+    @GetMapping("/movements")
     @PreAuthorize("isAuthenticated()")
-    public String movements(@AuthenticationPrincipal User user, Model model) {
+    public ResponseEntity<List<Movement>> movements(@AuthenticationPrincipal User user) {
         try {
-            List<Movement> movements = farmService.getMovements(user);
-            model.addAttribute("movements", movements);
-            return "movements";
-        } catch (FarmException e) {
-            model.addAttribute("error", e.getMessage());
-            return "error";
+            return ResponseEntity.ok(farmService.getMovements(user));
         } catch (Exception e) {
             logger.error("Unexpected error in movements: " + e.getMessage());
-            throw new FarmException("An unexpected error occurred while loading movements", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    @GetMapping("/dashboard/categories")
+    @GetMapping("/ai-report")
     @PreAuthorize("isAuthenticated()")
-    public String categories(Model model) {
+    public ResponseEntity<String> aiReport(@AuthenticationPrincipal User user) {
         try {
-            List<Category> categories = farmService.getCategories();
-            model.addAttribute("categories", categories);
-            return "categories";
-        } catch (FarmException e) {
-            model.addAttribute("error", e.getMessage());
-            return "error";
+            List<Movement> movements = farmService.getMovements(user);
+            String aiReport = farmService.generateAIReport(movements, user);
+            return ResponseEntity.ok(aiReport);
+        } catch (Exception e) {
+            logger.error("Unexpected error in aiReport: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to generate AI report");
+        }
+    }
+
+    @GetMapping("/categories")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<Category>> categories() {
+        try {
+            return ResponseEntity.ok(farmService.getCategories());
         } catch (Exception e) {
             logger.error("Unexpected error in categories: " + e.getMessage());
-            throw new FarmException("An unexpected error occurred while loading categories", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    @GetMapping("/login")
-    public String login() {
-        return "login";
-    }
-
-    @GetMapping("/register")
-    public String register(Model model) {
-        model.addAttribute("user", new User());
-        return "register";
-    }
-
-    @PostMapping("/register")
-    public String register(@ModelAttribute("user") User user, RedirectAttributes redirectAttributes) {
-        try {
-            Optional<User> existingUser = userRepository.findByUsername(user.getUsername());
-            if (existingUser.isPresent()) {
-                throw new FarmException("Username already exists");
-            }
-
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
-            userRepository.save(user);
-            return "redirect:/login";
-        } catch (FarmException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/register";
-        } catch (Exception e) {
-            logger.error("Error registering user: " + e.getMessage());
-            throw new FarmException("An unexpected error occurred during registration", e);
-        }
-    }
-
-
-
-    @PostMapping("/buy")
+    @PutMapping("/articles/{id}")
     @PreAuthorize("isAuthenticated()")
-    public String buy(@RequestParam Long articleId,
-                      @RequestParam int quantity,
-                      @AuthenticationPrincipal User user,
-                      RedirectAttributes redirectAttributes) {
+    public ResponseEntity<?> updateArticle(@PathVariable Long id, @RequestBody Article article, @AuthenticationPrincipal User user) {
         try {
-            if (!farmService.buy(articleId, quantity, user)) {
-                redirectAttributes.addFlashAttribute("error", "Insufficient balance or stock limit reached");
-            }
-            return "redirect:/dashboard";
-        } catch (FarmException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/dashboard";
-        } catch (Exception e) {
-            logger.error("Unexpected error in buy: " + e.getMessage());
-            throw new FarmException("An unexpected error occurred while buying", e);
-        }
-    }
-
-    @PostMapping("/sell")
-    @PreAuthorize("isAuthenticated()")
-    public String sell(@RequestParam Long articleId,
-                       @RequestParam int quantity,
-                       @AuthenticationPrincipal User user,
-                       RedirectAttributes redirectAttributes) {
-        try {
-            farmService.buy(articleId, quantity, user);
-            redirectAttributes.addFlashAttribute("successMessage", "Purchase successful!");
-            return "redirect:/dashboard";
-        } catch (InsufficientBalanceException ibe) {
-            logger.warn("Failed to buy due to insufficient balance for user {}: {}", user.getUsername(), ibe.getMessage());
-            redirectAttributes.addFlashAttribute("errorMessage", ibe.getMessage());
-            return "redirect:/dashboard";
-        } catch (FarmException fe) {
-            logger.warn("FarmException while buying for user {}: {}", user.getUsername(), fe.getMessage());
-            redirectAttributes.addFlashAttribute("errorMessage", fe.getMessage());
-            return "redirect:/dashboard";
-        } catch (Exception e) {
-            logger.error("Unexpected error in buy for user {}: {}", user.getUsername(), e.getMessage(), e);
-            redirectAttributes.addFlashAttribute("errorMessage", "An unexpected error occurred during purchase.");
-            return "redirect:/dashboard";
-        }
-    }
-
-    @GetMapping("/report")
-    @PreAuthorize("isAuthenticated()")
-    public String report(@AuthenticationPrincipal User user, Model model) {
-        try {
-            Report report = farmService.generateReport();
-            List<Movement> movements = farmService.getMovements(user);
-            model.addAttribute("report", report);
-            model.addAttribute("movements", movements);
-            return "movimientos-reporte";
-        } catch (FarmException e) {
-            model.addAttribute("error", e.getMessage());
-            return "error";
-        } catch (Exception e) {
-            logger.error("Unexpected error in report: " + e.getMessage());
-            throw new FarmException("An unexpected error occurred while generating report", e);
-        }
-    }
-
-
-    @GetMapping("/edit/{id}")
-    @PreAuthorize("isAuthenticated()")
-    public String editArticle(@PathVariable Long id, Model model) {
-        try {
-            // TODO: Add ownership check or admin role check if necessary
-            Article article = farmService.getArticle(id);
-            model.addAttribute("articulo", article);
-            return "modificar-articulo";
-        } catch (Exception e) {
-            throw new RuntimeException("Error loading article", e);
-        }
-    }
-
-    @PostMapping("/update")
-    @PreAuthorize("isAuthenticated()")
-    public String updateArticle(@ModelAttribute Article article) {
-        try {
-            // TODO: Add ownership check or admin role check if necessary
-            // Consider fetching the existing article by article.getId() to verify ownership
-            // before calling farmService.updateArticle(article).
+            article.setId(id);
+            article.setUser(user); // Ensure user is always set!
             farmService.updateArticle(article);
-            return "redirect:/dashboard";
+            return ResponseEntity.ok("Article updated successfully");
         } catch (Exception e) {
-            throw new RuntimeException("Error updating article", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error updating article: " + e.getMessage());
         }
     }
 
-    @PostMapping("/delete/{id}")
-    @PreAuthorize("isAuthenticated()")
-    public String deleteArticle(@PathVariable Long id, RedirectAttributes redirectAttributes) {
-        try {
-            farmService.deleteArticle(id);
-            redirectAttributes.addFlashAttribute("success", "Article deleted successfully");
-            return "redirect:/dashboard";
-        } catch (FarmException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/dashboard";
-        } catch (Exception e) {
-            logger.error("Unexpected error in deleteArticle: " + e.getMessage());
-            throw new FarmException("An unexpected error occurred while deleting article", e);
-        }
-    }
 }
