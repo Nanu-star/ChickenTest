@@ -60,7 +60,7 @@ Este proyecto es compatible con [Development Containers (devcontainers)](https:/
    - El contenedor se construye usando el `Dockerfile` proporcionado.
    - Se instalan las dependencias de Maven (`mvn clean install`).
    - La aplicación Spring Boot se inicia automáticamente con `mvn spring-boot:run` utilizando el perfil `dev`.
-   - El puerto 8080 se reenvía, por lo que puedes acceder a la aplicación en `http://localhost:8080` desde tu navegador.
+   - El puerto 8080 se reenvía, por lo que puedes acceder a la aplicación en `http://localhost:8080/swagger-ui/index.html#/` desde tu navegador.
 
 4. **Persistencia**
    - Tu espacio de trabajo local se monta dentro del contenedor para edición en vivo del código.
