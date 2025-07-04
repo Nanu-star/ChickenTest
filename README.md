@@ -80,5 +80,3 @@ Este proyecto es compatible con [Development Containers (devcontainers)](https:/
 4. **Persistencia**
    - Tu espacio de trabajo local se monta dentro del contenedor para edición en vivo del código.
    - Tu repositorio local de Maven (`~/.m2`) se monta para acelerar la resolución de dependencias.
-
----
