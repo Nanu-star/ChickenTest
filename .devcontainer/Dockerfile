@@ -1,9 +1,11 @@
-FROM mcr.microsoft.com/devcontainers/java:17-bullseye
+# Imagen base con JDK 17
+FROM eclipse-temurin:17-jdk
 
-# Instala Maven (si querés versión custom, sino ya viene con el image)
-RUN apt-get update && apt-get install -y maven
+# Crea directorio de trabajo
+WORKDIR /app
 
-# Setea el working directory
-WORKDIR /workspace
+# Copia el jar compilado (usado después del build)
+COPY target/*.jar app.jar
 
-CMD ["./mvnw", "spring-boot:run"]
+# Comando para iniciar tu app
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
