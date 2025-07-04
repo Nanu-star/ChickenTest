@@ -1,24 +1,27 @@
 {
-    "name": "ChickenTest DevContainer",
-    "build": {
-      "dockerfile": "Dockerfile",
-      "context": ".."
-    },
-    "customizations": {
-      "vscode": {
-        "settings": {
-          "terminal.integrated.shell.linux": "/bin/bash"
-        }
+  "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
+  "name": "ChickenTest DevContainer",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
       }
-    },
-    
-    "forwardPorts": [8080],  
-    
-    "postCreateCommand": "mvn clean install",
-    "postStartCommand": "mvn spring-boot:run",
-    "mounts": [
-      "source=${localWorkspaceFolder}/,target=/workspace,type=bind"
-    ],
-    "remoteUser": "vscode"
-  }
+    }
+  },
+  "containerEnv": {
+    "SPRING_PROFILES_ACTIVE": "dev"
+  },
+  "forwardPorts": [8080],  
+  "postCreateCommand": "mvn clean install",
+  "postStartCommand": "mvn spring-boot:run",
+  "mounts": [
+    "source=${localWorkspaceFolder}/,target=/workspace,type=bind",
+    "source=${env:USERPROFILE}/.m2,target=/root/.m2,type=bind"
+  ],
+  "remoteUser": "vscode"
+}
   

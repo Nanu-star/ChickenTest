@@ -47,6 +47,8 @@ class FarmServiceImplTest {
     private UserRepository userRepository;
     @Mock
     private AiService aiService; // Added AiService mock
+    @Mock
+    private FarmMetricsService farmMetricsService ;
 
     @InjectMocks
     private FarmServiceImpl farmService;
@@ -119,6 +121,7 @@ class FarmServiceImplTest {
         Article saved = farmService.addArticle(article, user);
         assertEquals(user, saved.getUser());
         verify(articleRepository, times(1)).save(article);
+        verify(farmMetricsService, times(1)).incrementAddArticle();
     }
 
     @Test
@@ -143,6 +146,7 @@ class FarmServiceImplTest {
         Article saved = farmService.addArticle(article, user);
         assertEquals(user, movement.getUser());
         assertEquals(article, movement.getArticle());
+        verify(farmMetricsService, times(1)).incrementAddArticle();
     }
 
     @Test
@@ -162,6 +166,7 @@ class FarmServiceImplTest {
         when(categoryRepository.findById(egg.getId())).thenReturn(Optional.of(egg));
         when(articleRepository.save(any(Article.class))).thenReturn(article);
         assertDoesNotThrow(() -> farmService.addArticle(article, user));
+        verify(farmMetricsService, times(1)).incrementAddArticle();
     }
 
     @Test
@@ -211,6 +216,7 @@ void buy_happyPath_succeedsAndUpdatesStockAndBalanceAndCreatesMovement() {
     assertEquals(55, article.getUnits());
     assertEquals(990.0, user.getBalance()); // Si partía de 1000 y gastó 10
     verify(movementRepository, times(1)).save(any(Movement.class));
+    verify(farmMetricsService, times(1)).incrementBuy();
 }
 
     @Test
@@ -303,6 +309,7 @@ void buy_happyPath_succeedsAndUpdatesStockAndBalanceAndCreatesMovement() {
         assertEquals(eggArticle, capturedMovement.getArticle());
         assertEquals(user, capturedMovement.getUser());
         assertEquals(MovementType.SALE, capturedMovement.getType());
+        verify(farmMetricsService, times(1)).incrementSale();
     }
 
     @Test
@@ -373,7 +380,13 @@ void buy_happyPath_succeedsAndUpdatesStockAndBalanceAndCreatesMovement() {
         Article eggToHatch = createArticle(1L, "Almost Ready Egg", 5, 0.5, eggCategory);
         eggToHatch.setAge(Constants.EGG_HATCH_DAYS - 1); // Will hatch today
         eggToHatch.setLastAgedDate(LocalDate.now().minusDays(1)); // Last aged yesterday
-
+        User systemUser = new User();
+        systemUser.setUsername("system");
+        systemUser.setPassword("encoded_admin"); // dummy value for test
+        systemUser.setBalance(0);
+        systemUser.setRole("SYSTEM");
+        when(userRepository.findByUsername("system")).thenReturn(Optional.of(systemUser));
+        
         when(articleRepository.findByCategory(eggCategory)).thenReturn(List.of(eggToHatch));
         when(articleRepository.save(any(Article.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(movementRepository.save(any(Movement.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -404,6 +417,8 @@ void buy_happyPath_succeedsAndUpdatesStockAndBalanceAndCreatesMovement() {
         assertEquals(5, systemMovement.getUnits());
         assertEquals(MovementType.SYSTEM, systemMovement.getType());
         assertEquals("system", systemMovement.getUser().getUsername());
+        verify(farmMetricsService, times(1)).countHatchedEggs(5);
+        verify(farmMetricsService, times(1)).countHatchEvent();
     }
 
     @Test
