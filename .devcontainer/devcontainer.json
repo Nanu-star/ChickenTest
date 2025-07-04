@@ -16,7 +16,7 @@
     "SPRING_PROFILES_ACTIVE": "dev"
   },
   "forwardPorts": [8080],  
-  "postCreateCommand": "mvn clean install",
+  "postCreateCommand": "rm -rf target/",
   "postStartCommand": "mvn spring-boot:run",
   "mounts": [
     "source=${localWorkspaceFolder}/,target=/workspace,type=bind",
