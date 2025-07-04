@@ -204,13 +204,6 @@ public class FarmController {
         }
     }
 
-    // Removed redundant /report endpoint, /ai-report is preferred
-    // @GetMapping("/report")
-    // public String getFarmReport(@AuthenticationPrincipal User user) { ... }
-
-    // Removed unused Helper DTO for report endpoint
-    // public static class ReportResponse { ... }
-
     @PutMapping("/articles/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> updateArticle(@PathVariable Long id, @RequestBody Article article, @AuthenticationPrincipal User user) {

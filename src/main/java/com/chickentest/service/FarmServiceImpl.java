@@ -2,12 +2,16 @@ package com.chickentest.service;
 
 import com.chickentest.config.Constants;
 import com.chickentest.domain.*;
+import com.chickentest.exception.ArticleNotFoundException;
 import com.chickentest.exception.FarmException;
+import com.chickentest.exception.InsufficientBalanceException;
 import com.chickentest.exception.InsufficientStockException;
+import com.chickentest.exception.MaxStockExceededException;
 import com.chickentest.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,13 +31,13 @@ public class FarmServiceImpl implements FarmService {
     private final UserRepository userRepository;
     private final AiService aiService;
 
-    @org.springframework.beans.factory.annotation.Value("${farm.max-eggs:2000}")
+    @Value("${farm.max-eggs:2000}")
     private int maxEggs;
 
-    @org.springframework.beans.factory.annotation.Value("${farm.max-chickens:1500}")
+    @Value("${farm.max-chickens:1500}")
     private int maxChickens;
 
-    @org.springframework.beans.factory.annotation.Value("${farm.egg-hatch-days:3}")
+    @Value("${farm.egg-hatch-days:3}")
     private int eggHatchDays;
 
     private Category chickensCategory;
@@ -60,21 +64,6 @@ public class FarmServiceImpl implements FarmService {
         if (chickensCategory == null || eggsCategory == null) {
             throw new FarmException("Required categories (CHICKEN, EGG) not found in database. Please initialize them.");
         }
-
-        // Initialize system user
-        this.systemUser = userRepository.findByUsername("system")
-            .orElseGet(() -> {
-                User sysUser = new User();
-                sysUser.setUsername("system");
-                // In a real app, password should be securely hashed if login was possible,
-                // or made clear it's a system-only, non-loginable account.
-                sysUser.setPassword("---system_account_no_login---");
-                sysUser.setRole("SYSTEM"); // Assuming a "SYSTEM" role exists or can be handled
-                sysUser.setEnabled(false); // Typically system users don't log in
-                sysUser.setBalance(0); // System user shouldn't have a balance for transactions
-                logger.info("Creating system user 'system'.");
-                return userRepository.save(sysUser);
-            });
     }
 
     @Override
@@ -233,14 +222,16 @@ public class FarmServiceImpl implements FarmService {
                             .createdAt(LocalDateTime.now())
                             .build();
                     articleRepository.save(chicken);
-
+                    User systemUser = userRepository.findByUsername("system")
+                    .orElseThrow(() -> new FarmException("No existe el usuario 'system' en la base."));
+                
                     Movement movement = Movement.builder()
                             .article(chicken)
                             .date(LocalDateTime.now())
                             .type(MovementType.SYSTEM)
                             .units(hatchedUnits)
                             .amount(chicken.getPrice() * hatchedUnits)
-                            .user(this.systemUser) // Use initialized system user
+                            .user(systemUser)
                             .build();
                     movementRepository.save(movement);
                 }
@@ -274,11 +265,11 @@ public class FarmServiceImpl implements FarmService {
 
         article.setUnits(updatedUnits);
 
+        if (user == null) throw new IllegalArgumentException("User must not be null when recording BUY/SALE movements");
         Movement movement = Movement.createMovement(article, quantity, transactionAmount, user);
         movement.setType(type);
 
         articleRepository.save(article);
-        // userRepository.save(user); // Removed: User is now managed and saved implicitly by JPA if changes occurred within the transaction.
         movementRepository.save(movement);
     }
 

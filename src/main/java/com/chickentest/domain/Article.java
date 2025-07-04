@@ -24,6 +24,10 @@ import java.util.List;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 @Builder
 @Data
 @NoArgsConstructor
@@ -49,19 +53,21 @@ public class Article {
     
     @Column(nullable = true)
     private LocalDate lastAgedDate;
-
+    
     @ManyToOne(optional = false)
     @JoinColumn(name = "category_id", nullable = false)
+    @JsonBackReference("category-articles")
     private Category category;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
 
     @Column(nullable = false)
     private String production;
-    
     @OneToMany(mappedBy = "article", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("article-movements")
     private List<Movement> movements = new ArrayList<>();
 
     @CreationTimestamp

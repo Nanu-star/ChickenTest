@@ -15,6 +15,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -37,9 +39,8 @@ import lombok.Data;
 public class User implements UserDetails, Serializable {
 
     @OneToMany(mappedBy = "user")
-    @com.fasterxml.jackson.annotation.JsonManagedReference
-    private java.util.List<Movement> movements;
-
+    @JsonIgnore
+    private List<Movement> movements;
     
     private static final long serialVersionUID = 1L;
     @Id
@@ -56,8 +57,8 @@ public class User implements UserDetails, Serializable {
     private double balance;
 
     @Column(nullable = false)
-    private String role = "USER";
-
+    private String role = "USER"; // should be 'USER' in DB, not 'ROLE_USER'
+    @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Article> articles = new ArrayList<>();
 
