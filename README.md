@@ -1,5 +1,5 @@
 # ChickenTest
-Mi primer proyecto web en Java.
+Mi primer proyecto en Java.
 
 ### Instrucciones 📋
 Ejecutar el archivo sql script para cargar la base de datos con información, y luego ingresar al sistema con el usuario: admin/contraseña: admin.
