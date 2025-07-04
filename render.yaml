@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: chickentest
+    runtime: docker
+    plan: free
+    repo: https://github.com/tu-usuario/chickentest
+    buildCommand: ./mvnw clean package -DskipTests
+    startCommand: java -jar target/*.jar
+    branch: main
+    autoDeploy: true

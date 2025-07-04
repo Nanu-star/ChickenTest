@@ -5,42 +5,57 @@ Mi primer proyecto web en Java.
 Ejecutar el archivo sql script para cargar la base de datos con información, y luego ingresar al sistema con el usuario: admin/contraseña: admin.
 
 ### Construcción 🔧
-Se realizó el programa con Java EE Servlets y Eclipse IDE. Las páginas se realizaron con JSP y Bootstrap.
+El proyecto ha evolucionado y ahora utiliza Spring Boot para la ejecución principal, con componentes como `LoadSimulator` para simulación de carga y lógica de negocio. Se ha migrado la lógica principal desde Java EE Servlets y JSP a una arquitectura basada en Spring Boot.
 
 ### Requerimientos 🚀
 Obligatorios:
 
--Una granja puede tener un número limitado de huevos y gallinas. 
-
--Pueden comprarse huevos y gallinas si la granja posee el saldo suficiente.
-
--Pueden venderse huevos y gallinas de poseer artículos suficientes. 
-
--Los huevos serán gallinas pasados [] días. 
-
--El sistema debe poseer un reporte con la situación de la granja y más información relevante. 
-
+- Una granja puede tener un número limitado de huevos y gallinas.
+- Pueden comprarse huevos y gallinas si la granja posee el saldo suficiente.
+- Pueden venderse huevos y gallinas de poseer artículos suficientes.
+- Los huevos serán gallinas pasados [configurable] días.
+- El sistema posee un reporte con la situación de la granja y más información relevante.
 
 Opcionales:
 
--Los huevos pueden comprarse o ser depositados por gallinas. 
+- Los huevos pueden comprarse o ser depositados por gallinas.
+- Las gallinas pueden comprarse o nacer desde un huevo.
+- Los huevos pueden dejar la granja si se venden o si fallecen.
+- Las gallinas fallecen pasados [configurable] días.
+- Las gallinas ponen [configurable] huevos cada [configurable] días.
 
--Las gallinas pueden comprarse o nacer desde un huevo. 
-
--Los huevos pueden dejar la granja si se venden o si fallecen. 
-
--Las gallinas fallecen pasados [] días. 
-
--Las gallinas ponen [] huevos cada [] días. 
+> **Nota:** Algunos parámetros del sistema, como los días de vida de gallinas/huevos o la frecuencia de puesta, ahora pueden configurarse fácilmente mediante el archivo `application.properties` de Spring Boot.
 
 ### Spring Boot
-Para ejecutar la aplicación utilizando Spring Boot simplemente ejecute:
+La aplicación utiliza Spring Boot como framework principal. Incluye componentes como `LoadSimulator` que pueden ser configurados mediante propiedades externas.
+
+Para ejecutar la aplicación:
 
 ```bash
 mvn spring-boot:run
 ```
 
-Esto compilará el proyecto y levantará el servidor embebido de Spring Boot.
+Esto compilará el proyecto y levantará el servidor embebido de Spring Boot en el puerto 8080 por defecto.
+
+#### Configuración
+
+Las propiedades de configuración se definen en `src/main/resources/application.properties`. 
+
+Puedes modificar estos valores para ajustar el comportamiento de los simuladores o lógica de negocio sin cambiar el código fuente.
+
+#### Variables sensibles y configuración local
+
+1. Crea un archivo `src/main/resources/application-local.properties` (este archivo debe estar en `.gitignore`).
+2. Copia y personaliza las siguientes líneas según tus credenciales:
+
+    ```properties
+    openai.api.key=pon-tu-clave-aqui
+    jwt.secret=pon-tu-secreto-aqui
+    ```
+
+3. Spring Boot cargará automáticamente este archivo si existe y sobreescribirá las propiedades del archivo principal.
+
+
 
 ---
 
