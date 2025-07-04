@@ -1,0 +1,16 @@
+{
+  "name": "ChickenTest DevContainer",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash"
+  },
+  "forwardPorts": [8080],  // expone el puerto Spring Boot
+  "postCreateCommand": "mvn clean install",
+  "mounts": [
+    "source=${localWorkspaceFolder}/,target=/workspace,type=bind"
+  ],
+  "remoteUser": "vscode"
+}
