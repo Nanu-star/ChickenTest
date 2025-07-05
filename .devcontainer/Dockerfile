@@ -1,16 +1,20 @@
-FROM eclipse-temurin:17-jdk
+# Imagen base con Maven y JDK 17 ya incluidos
+FROM maven:3.9.4-eclipse-temurin-17 AS build
 
-# Crea el directorio de trabajo
 WORKDIR /app
 
-# Copia el código fuente (todo el proyecto)
+# Copiamos todo y construimos
 COPY . .
 
-# Compila el proyecto con Maven
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
-# Expone el puerto si querés (opcional)
+# Imagen final, más liviana
+FROM eclipse-temurin:17-jdk
+
+WORKDIR /app
+
+COPY --from=build /app/target/*.jar app.jar
+
 EXPOSE 8080
 
-# Corre la app
-ENTRYPOINT ["java", "-jar", "target/chickentest-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
