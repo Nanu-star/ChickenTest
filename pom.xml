@@ -60,7 +60,6 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-            <!-- Consider aligning Flyway version with Spring Boot 3 if issues arise, but 9.21.2 is fairly recent -->
             <version>9.21.2</version>
         </dependency>
         <dependency>
