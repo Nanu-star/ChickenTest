@@ -5,6 +5,7 @@ import java.util.List;
 import com.chickentest.domain.Article;
 import com.chickentest.domain.Movement;
 import com.chickentest.domain.User;
+import com.chickentest.dto.CategoryResponse;
 import com.chickentest.domain.Report;
 import com.chickentest.domain.Category;
 
@@ -42,6 +43,9 @@ public interface FarmService {
     void hatchEggs();
 
     // void hatchEggsInternal(); // Removed
+
+    @Transactional(readOnly = true)
+    List<Category> getCategoryResponses();
 
     @Transactional(readOnly = true)
     List<Category> getCategories();

@@ -2,6 +2,7 @@ package com.chickentest.service;
 
 import com.chickentest.config.Constants;
 import com.chickentest.domain.*;
+import com.chickentest.dto.CategoryResponse;
 import com.chickentest.exception.ArticleNotFoundException;
 import com.chickentest.exception.FarmException;
 import com.chickentest.exception.InsufficientBalanceException;
@@ -73,7 +74,7 @@ public class FarmServiceImpl implements FarmService {
     @Override
     @Transactional(readOnly = true)
     public List<Article> loadInventory(User user) {
-        return articleRepository.findAll();
+        return articleRepository.findAllByUserId(user.getId());
     }
 
     @Override
@@ -247,6 +248,12 @@ public class FarmServiceImpl implements FarmService {
                 }
             }
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Category> getCategoryResponses() {
+        return categoryRepository.findAll();
     }
 
     @Override

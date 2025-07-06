@@ -2,6 +2,8 @@ package com.chickentest.controller;
 
 import com.chickentest.config.JwtService;
 import com.chickentest.domain.User;
+import com.chickentest.dto.AuthRequest;
+import com.chickentest.dto.UserMe;
 import com.chickentest.repository.UserRepository;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -35,13 +37,15 @@ public class AuthController {
     private JwtService jwtService;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody User user) {
+    public ResponseEntity<?> register(@RequestBody AuthRequest authRequest) {
         try {
-            Optional<User> existingUser = userRepository.findByUsername(user.getUsername());
+            Optional<User> existingUser = userRepository.findByUsername(authRequest.getUsername());
             if (existingUser.isPresent()) {
                 return ResponseEntity.badRequest().body("Username already exists");
             }
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            User user = new User();
+            user.setUsername(authRequest.getUsername());
+            user.setPassword(passwordEncoder.encode(authRequest.getPassword()));
             userRepository.save(user);
             return ResponseEntity.ok("Registration successful");
         } catch (Exception e) {
@@ -50,50 +54,43 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody User loginRequest, HttpServletRequest request) {
-         try {
-        Authentication authentication = authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(
-                loginRequest.getUsername(),
-                loginRequest.getPassword())
-        );
-        // Usuario autenticado, generamos el token
-        UserDetails user = (UserDetails) authentication.getPrincipal();
-        String jwt = jwtService.generateToken(user);
+    public ResponseEntity<?> login(@RequestBody AuthRequest loginRequest, HttpServletRequest request) {
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                    loginRequest.getUsername(),
+                    loginRequest.getPassword())
+            );
+            // Usuario autenticado, generamos el token
+            UserDetails user = (UserDetails) authentication.getPrincipal();
+            String jwt = jwtService.generateToken(user);
 
-        // Podés devolver solo el token, o más info si querés
-        return ResponseEntity.ok(Map.of(
-            "token", jwt,
-            "username", user.getUsername(),
-            "roles", user.getAuthorities()
-        ));
-    } catch (Exception e) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
-    }
+            // Podés devolver solo el token, o más info si querés
+            return ResponseEntity.ok(Map.of(
+                "token", jwt,
+                "username", user.getUsername(),
+                "roles", user.getAuthorities()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
+        }
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(Authentication authentication, HttpServletRequest request) {
-        System.out.println("[DEBUG] /auth/me called");
-        if (authentication == null) {
-            System.out.println("[DEBUG] authentication is null");
-        } else {
-            System.out.println("[DEBUG] authentication: " + authentication);
-            System.out.println("[DEBUG] principal: " + authentication.getPrincipal());
-            System.out.println("[DEBUG] authorities: " + authentication.getAuthorities());
-        }
-        // Try to log CSRF token if present
-        Object csrf = request.getAttribute("org.springframework.security.web.csrf.CsrfToken");
-        if (csrf != null) {
-            System.out.println("[DEBUG] CSRF token: " + csrf.toString());
-        } else {
-            System.out.println("[DEBUG] No CSRF token found in request attributes");
-        }
-        if (authentication != null && authentication.getPrincipal() instanceof User) {
-            User user = (User) authentication.getPrincipal();
-            user.setPassword(null);
-            return ResponseEntity.ok(user);
-        }
+public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+    if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No authenticated user");
     }
+
+    User user = (User) authentication.getPrincipal();
+
+    UserMe dto = new UserMe(
+        user.getId(),
+        user.getUsername(),
+        user.getRole(),
+        user.getBalance()
+    );
+
+    return ResponseEntity.ok(dto);
+}
 }

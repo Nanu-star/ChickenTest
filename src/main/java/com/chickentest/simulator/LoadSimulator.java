@@ -5,7 +5,6 @@ import com.chickentest.repository.UserRepository;
 import com.chickentest.service.FarmService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -26,16 +25,16 @@ public class LoadSimulator implements CommandLineRunner {
         User systemUser = createOrGetUser("system");
         initializeSystemStock(systemUser);
 
+        List<Category> categories = farmService.getCategories();
+        Category chickenCat = categories.stream().filter(c -> c.getName().equals("CHICKEN")).findFirst().orElseThrow();
+        Category eggCat = categories.stream().filter(c -> c.getName().equals("EGG")).findFirst().orElseThrow();
+
         for (int i = 1; i <= 5; i++) {
             String username = "user" + i;
             User user = createOrGetUser(username);
             farmService.updateUserBalance(user, 5000.0);
 
-            List<Category> categories = farmService.getCategories();
-            Category chickenCat = categories.stream().filter(c -> c.getName().equals("CHICKEN")).findFirst().orElseThrow();
-            Category eggCat = categories.stream().filter(c -> c.getName().equals("EGG")).findFirst().orElseThrow();
-
-            // Artículos iniciales vacíos (cosméticos, ya que stock se guarda en los originales)
+            // Crear inventario propio inicial del usuario (vacío)
             farmService.addArticle(Article.builder()
                     .name("Gallinas " + username)
                     .category(chickenCat)
@@ -51,24 +50,24 @@ public class LoadSimulator implements CommandLineRunner {
                     .build(), user);
 
             // Compran al sistema
-            buyFromSystemStock(eggCat.getId(), 10, user);
-            buyFromSystemStock(chickenCat.getId(), 2, user);
+            buyFromSystemStock(eggCat, 10, user);
+            buyFromSystemStock(chickenCat, 2, user);
 
-            // Venta realista: buscar el artículo que *sí tiene stock* y vender desde ahí
+            // Intentar vender desde inventario real
             List<Article> inventory = farmService.loadInventory(user);
             inventory.stream()
                     .filter(a -> a.getCategory().getId().equals(eggCat.getId()))
                     .filter(a -> a.getUnits() >= 5)
                     .findFirst()
-                    .ifPresentOrElse(articleConHuevos -> {
+                    .ifPresentOrElse(article -> {
                         try {
-                            farmService.sell(articleConHuevos.getId(), 5, user);
+                            farmService.sell(article.getId(), 5, user);
                             System.out.println("💸 " + user.getUsername() + " vendió 5 huevos.");
                         } catch (Exception e) {
                             System.out.println("❌ Venta fallida para " + user.getUsername() + ": " + e.getMessage());
                         }
                     }, () -> {
-                        System.out.println("⚠️ " + user.getUsername() + " no tiene suficientes huevos para vender.");
+                        System.out.println("⚠️ " + user.getUsername() + " no tiene huevos suficientes para vender.");
                     });
         }
 
@@ -91,10 +90,12 @@ public class LoadSimulator implements CommandLineRunner {
         Category chickenCat = categories.stream().filter(c -> c.getName().equals("CHICKEN")).findFirst().orElseThrow();
         Category eggCat = categories.stream().filter(c -> c.getName().equals("EGG")).findFirst().orElseThrow();
 
-        List<Article> existing = farmService.loadInventory(systemUser);
+        List<Article> systemInventory = farmService.loadInventory(systemUser);
 
-        boolean hasEggs = existing.stream().anyMatch(a -> a.getCategory().equals(eggCat) && a.getUnits() > 0);
-        boolean hasChickens = existing.stream().anyMatch(a -> a.getCategory().equals(chickenCat) && a.getUnits() > 0);
+        boolean hasEggs = systemInventory.stream()
+                .anyMatch(a -> a.getCategory().equals(eggCat) && a.getUnits() > 0);
+        boolean hasChickens = systemInventory.stream()
+                .anyMatch(a -> a.getCategory().equals(chickenCat) && a.getUnits() > 0);
 
         if (!hasEggs) {
             farmService.addArticle(Article.builder()
@@ -117,11 +118,11 @@ public class LoadSimulator implements CommandLineRunner {
         }
     }
 
-    private void buyFromSystemStock(Long categoryId, int quantity, User buyer) {
-        List<Article> all = farmService.loadInventory(buyer);
-        Article articleToBuy = all.stream()
-                .filter(a -> a.getCategory().getId().equals(categoryId))
-                .filter(a -> a.getUser().getUsername().equals("system"))
+    private void buyFromSystemStock(Category category, int quantity, User buyer) {
+        User systemUser = userRepository.findByUsername("system").orElseThrow();
+        List<Article> systemInventory = farmService.loadInventory(systemUser);
+        Article articleToBuy = systemInventory.stream()
+                .filter(a -> a.getCategory().getId().equals(category.getId()))
                 .filter(a -> a.getUnits() >= quantity)
                 .findFirst()
                 .orElse(null);
@@ -134,7 +135,7 @@ public class LoadSimulator implements CommandLineRunner {
                 System.out.println("❌ Compra fallida para " + buyer.getUsername() + ": " + e.getMessage());
             }
         } else {
-            System.out.println("⚠️ No hay stock del sistema para categoría ID " + categoryId + " (" + buyer.getUsername() + ")");
+            System.out.println("⚠️ No hay stock del sistema para categoría " + category.getName() + " (" + buyer.getUsername() + ")");
         }
     }
 }

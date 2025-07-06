@@ -510,9 +510,9 @@ void buy_happyPath_succeedsAndUpdatesStockAndBalanceAndCreatesMovement() {
 
     // --- Tests for other simple methods ---
     @Test
-    void loadInventory_returnsAllArticles() {
+    void loadInventory_returnsUserArticles() {
         List<Article> expectedArticles = List.of(createArticle(1L, "Egg", 10, 0.5, eggCategory));
-        when(articleRepository.findAll()).thenReturn(expectedArticles);
+        when(articleRepository.findAllByUserId(user.getId())).thenReturn(expectedArticles);
         List<Article> actualArticles = farmService.loadInventory(user);
         assertEquals(expectedArticles, actualArticles);
     }

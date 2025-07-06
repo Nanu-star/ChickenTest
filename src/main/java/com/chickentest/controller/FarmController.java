@@ -5,6 +5,9 @@ import com.chickentest.domain.Category;
 import com.chickentest.domain.Movement;
 import com.chickentest.domain.Report;
 import com.chickentest.domain.User;
+import com.chickentest.dto.ArticleRequest;
+import com.chickentest.dto.CategoryResponse;
+import com.chickentest.dto.ArticleResponse;
 import com.chickentest.exception.*; // Import all exceptions
 import com.chickentest.repository.UserRepository;
 import com.chickentest.repository.CategoryRepository;
@@ -23,6 +26,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,9 +56,20 @@ public class FarmController {
 
     @GetMapping("/articles")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<Article>> articles(@AuthenticationPrincipal User user) {
+    public ResponseEntity<List<ArticleResponse>> articles(@AuthenticationPrincipal User user) {
         try {
-            return ResponseEntity.ok(farmService.loadInventory(user));
+            List<Article> articles = farmService.loadInventory(user);
+            List<ArticleResponse> response = articles.stream().map(article -> new ArticleResponse(
+                    article.getId(),
+                    article.getName(),
+                    article.getUnits(),
+                    article.getPrice(),
+                    article.getAge(),
+                    article.getProduction(),
+                    article.getCategory() != null ? article.getCategory().getId() : null,
+                    article.getCategory() != null ? article.getCategory().getName() : null
+            )).collect(Collectors.toList());
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Unexpected error in articles: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -94,15 +109,21 @@ public class FarmController {
 
     @PostMapping("/articles")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> addArticle(@AuthenticationPrincipal User user, @RequestBody Article article) {
+    public ResponseEntity<?> addArticle(@AuthenticationPrincipal User user, @RequestBody ArticleRequest articleRequest) {
         try {
-            // Category validation and setting is now fully handled by the service layer.
-            // The controller should ensure the user is set, or let the service do it.
-            // For consistency, if service `addArticle` takes user and sets it, this line can be removed too,
-            // but it's also fine for controller to set the authenticated user on the object being passed.
+            Article article = new Article();
+            article.setName(articleRequest.getName());
+            article.setUnits(articleRequest.getUnits());
+            article.setPrice(articleRequest.getPrice());
+            article.setAge(articleRequest.getAge());
+            article.setProduction(articleRequest.getProduction());
             article.setUser(user);
 
-            Article savedArticle = farmService.addArticle(article, user); // farmService.addArticle now handles category
+            Category category = categoryRepository.findById(articleRequest.getCategoryId())
+                    .orElseThrow(() -> new FarmException("Category not found"));
+            article.setCategory(category);
+
+            Article savedArticle = farmService.addArticle(article, user);
             if (savedArticle != null) { // Or check for specific success response/exception
                 return ResponseEntity.status(HttpStatus.CREATED).body(savedArticle); // Return CREATED and the article
             }
@@ -195,9 +216,16 @@ public class FarmController {
 
     @GetMapping("/categories")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<Category>> categories() {
+    public ResponseEntity<List<CategoryResponse>> categories() {
         try {
-            return ResponseEntity.ok(farmService.getCategories());
+            List<CategoryResponse> response = farmService.getCategoryResponses().stream()
+                    .map(cat -> new CategoryResponse(
+                            cat.getId(),
+                            cat.getName(),
+                            cat.getDisplayName()
+                    ))
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Unexpected error in categories: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
