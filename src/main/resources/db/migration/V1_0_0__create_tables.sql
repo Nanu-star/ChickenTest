@@ -27,8 +27,6 @@ CREATE TABLE articles (
     age INT NOT NULL DEFAULT 0,
     last_aged_date DATE NULL,
     production VARCHAR(255),
-    creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    display_price VARCHAR(255),
     category_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -37,11 +35,6 @@ CREATE TABLE articles (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- Create movement_types table for enum values
-CREATE TABLE movement_types (
-    name VARCHAR(255) PRIMARY KEY,
-    description VARCHAR(255) NOT NULL
-);
 
 -- Create movements table
 CREATE TABLE movements (
@@ -55,7 +48,6 @@ CREATE TABLE movements (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (article_id) REFERENCES articles(id),
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (type) REFERENCES movement_types(name)
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 

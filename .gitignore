@@ -1,10 +1,28 @@
 # Ignore build output
-/target/
 target/
+
+# H2 database files
+h2db/
+*.mv.db
+*.trace.db
 
 # IDE files
 /.idea/
+.vscode/
+.claude/
+CLAUDE.md
 *.iml
+workspace/
+
+# Cookies
+cookies.txt
+
+# Swagger
+swagger.yml
+**/open-api.yml
+
+# Generated tests
+generated-tests/
 
 # OS files
 .DS_Store
@@ -14,14 +32,12 @@ Thumbs.db
 *.log
 
 # Spring Boot application properties
-application.properties
-application.yml
 **/application.properties
-**/application.yml
+**/application-local.properties
+**/application-load.properties
 
 # Other common ignores
 *.class
 *.jar
 *.war
 *.ear
-src/main/resources/application.properties

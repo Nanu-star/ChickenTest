@@ -6,5 +6,10 @@
             "path": "C:\\Users\\nadia\\scoop\\apps\\openjdk17\\current",
             "default": true
         }
-    ]
+    ],
+    "java.compile.nullAnalysis.mode": "automatic",
+    "editor.formatOnSave": true,
+    "[java]": {
+        "editor.formatOnSave": false
+    }
 }

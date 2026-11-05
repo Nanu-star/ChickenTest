@@ -1,10 +1,18 @@
-# ChickenTest
-Mi primer proyecto en Java.
+# 🐔 ChickenTest
 
-### Instrucciones 📋
+**Simulador de granja con Java y Spring Boot.**
+
+API REST que simula la economía de una granja de gallinas: compra y venta de huevos y gallinas, administración de recursos, eclosión, producción de huevos y registro de movimientos para consultar la evolución de la granja.
+
+El proyecto comenzó como mi primera aplicación web en Java, desarrollada con Servlets y JSP. Posteriormente fue retomado y modernizado con Spring Boot, incorporando autenticación JWT, persistencia JPA, migraciones Flyway y documentación OpenAPI.
+
+> **🚧 Status: WIP — Pending Initial Release**
+
+
+### Instrucciones
 Ejecutar el archivo sql script para cargar la base de datos con información, y luego ingresar al sistema con el usuario: admin/contraseña: admin.
 
-### Construcción 🔧
+### Construcción
 El proyecto ha evolucionado y ahora utiliza Spring Boot para la ejecución principal, con componentes como `LoadSimulator` para simulación de carga y lógica de negocio. Se ha migrado la lógica principal desde Java EE Servlets y JSP a una arquitectura basada en Spring Boot.
 
 ### Requerimientos 🚀
@@ -49,11 +57,21 @@ Puedes modificar estos valores para ajustar el comportamiento de los simuladores
 2. Copia y personaliza las siguientes líneas según tus credenciales:
 
     ```properties
-    openai.api.key=pon-tu-clave-aqui
     jwt.secret=pon-tu-secreto-aqui
     ```
 
 3. Spring Boot cargará automáticamente este archivo si existe y sobreescribirá las propiedades del archivo principal.
+
+#### Formato de código
+
+El formato del código Java lo gestiona [Spotless](https://github.com/diffplug/spotless) con google-java-format en estilo `AOSP` (indentación de 4 espacios). Está configurado en el `pom.xml`:
+
+```bash
+mvn spotless:apply   # formatea el proyecto
+mvn spotless:check   # verifica el formato sin modificar archivos
+```
+
+El plugin no se ejecuta durante el build. En VS Code, el formateo al guardar está desactivado para Java, porque la extensión de google-java-format instalada no admite el estilo AOSP; usa `mvn spotless:apply` antes de confirmar cambios.
 
 
 
