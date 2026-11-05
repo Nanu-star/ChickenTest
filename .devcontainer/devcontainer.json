@@ -20,7 +20,7 @@
   "postStartCommand": "mvn spring-boot:run",
   "mounts": [
     "source=${localWorkspaceFolder}/,target=/workspace,type=bind",
-    "source=${env:USERPROFILE}/.m2,target=/root/.m2,type=bind"
+    "source=${env:USERPROFILE}/.m2,target=/home/vscode/.m2,type=bind"
   ],
   "remoteUser": "vscode"
 }
